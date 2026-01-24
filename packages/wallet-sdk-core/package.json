@@ -61,7 +61,8 @@
     "@solana/web3.js": "catalog:",
     "@stellar/stellar-sdk": "catalog:",
     "@mysten/sui": "catalog:",
-    "@mysten/wallet-standard": "catalog:"
+    "@mysten/wallet-standard": "catalog:",
+    "@provablehq/sdk": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
