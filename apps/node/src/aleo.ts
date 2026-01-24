@@ -173,6 +173,88 @@ async function signMessage(message: string): Promise<void> {
   console.log('[Verify] Signature valid:', isValid);
 }
 
+/**
+ * Wait for transaction confirmation
+ * @param txId - Transaction ID
+ */
+async function wait(txId: string): Promise<void> {
+  console.log('=== Wait for Transaction ===');
+  console.log('Transaction ID:', txId);
+  console.log('');
+
+  try {
+    const receipt = await aleoWalletProvider.waitForTransactionReceipt(txId);
+    console.log('[Wait] Transaction confirmed!');
+    console.log('[Wait] Status:', receipt.status);
+    console.log('[Wait] Type:', receipt.type);
+  } catch (error: any) {
+    console.error('[Wait] Error:', error.message);
+  }
+}
+
+/**
+ * Transfer credits and wait for confirmation
+ */
+async function transferAndWait(
+  recipient: string,
+  amount: number,
+  transferType: 'public' | 'private' | 'public_to_private' | 'private_to_public' = 'public',
+): Promise<void> {
+  console.log('=== Transfer and Wait ===');
+  console.log('Recipient:', recipient);
+  console.log('Amount:', amount, 'credits');
+  console.log('Type:', transferType);
+  console.log('');
+
+  const amountMicrocredits = BigInt(Math.floor(amount * 1_000_000));
+  
+  try {
+    const { transactionId, receipt } = await aleoWalletProvider.transferAndWait({
+      recipient,
+      amountMicrocredits,
+      transferType,
+      priorityFee: 0.01,
+    });
+
+    console.log('[Transfer] Transaction ID:', transactionId);
+    console.log('[Transfer] Status:', receipt.status);
+    console.log('[Transfer] Confirmed!');
+  } catch (error: any) {
+    console.error('[Transfer] Error:', error.message);
+  }
+}
+
+/**
+ * Execute program and wait for confirmation
+ */
+async function executeAndWait(
+  programName: string,
+  functionName: string,
+  inputs: string[],
+): Promise<void> {
+  console.log('=== Execute and Wait ===');
+  console.log('Program:', programName);
+  console.log('Function:', functionName);
+  console.log('Inputs:', inputs);
+  console.log('');
+
+  try {
+    const { result, receipt } = await aleoWalletProvider.executeAndWait({
+      programName,
+      functionName,
+      inputs,
+      priorityFee: 0.01,
+      privateFee: false,
+    });
+
+    console.log('[Execute] Transaction ID:', result.transactionId);
+    console.log('[Execute] Status:', receipt.status);
+    console.log('[Execute] Confirmed!');
+  } catch (error: any) {
+    console.error('[Execute] Error:', error.message);
+  }
+}
+
 // ============================================
 // CLI Handler
 // ============================================
@@ -189,11 +271,21 @@ async function main() {
     
     if (!recipient || isNaN(amount)) {
       console.error('Usage: npm run aleo transfer <recipient> <amount> [type]');
-      console.error('Types: public, private, public_to_private, private_to_public');
       process.exit(1);
     }
     
     await transfer(recipient, amount, transferType);
+  } else if (functionName === 'transfer-wait') {
+    const recipient = process.argv[3];
+    const amount = parseFloat(process.argv[4]);
+    const transferType = (process.argv[5] as 'public' | 'private' | 'public_to_private' | 'private_to_public') || 'public';
+    
+    if (!recipient || isNaN(amount)) {
+      console.error('Usage: npm run aleo transfer-wait <recipient> <amount> [type]');
+      process.exit(1);
+    }
+    
+    await transferAndWait(recipient, amount, transferType);
   } else if (functionName === 'execute') {
     const programName = process.argv[3];
     const functionName = process.argv[4];
@@ -205,6 +297,17 @@ async function main() {
     }
     
     await execute(programName, functionName, inputs);
+  } else if (functionName === 'execute-wait') {
+    const programName = process.argv[3];
+    const functionName = process.argv[4];
+    const inputs = process.argv.slice(5);
+    
+    if (!programName || !functionName) {
+      console.error('Usage: npm run aleo execute-wait <program> <function> <input1> <input2> ...');
+      process.exit(1);
+    }
+    
+    await executeAndWait(programName, functionName, inputs);
   } else if (functionName === 'view') {
     const programName = process.argv[3];
     const functionName = process.argv[4];
@@ -228,25 +331,28 @@ async function main() {
     }
     
     await signMessage(message);
+  } else if (functionName === 'wait') {
+    const txId = process.argv[3];
+    if (!txId) {
+      console.error('Usage: npm run aleo wait <txId>');
+      process.exit(1);
+    }
+    await wait(txId);
   } else {
     console.log('Aleo Wallet Simulator');
     console.log('=====================');
     console.log('');
     console.log('Available commands:');
     console.log('  balance              - Get wallet balance');
-    console.log('  transfer             - Transfer credits to another address');
+    console.log('  transfer             - Transfer credits');
+    console.log('  transfer-wait        - Transfer credits and wait for confirmation');
     console.log('  execute              - Execute a program function');
+    console.log('  execute-wait         - Execute a program function and wait for confirmation');
     console.log('  view                 - Execute a read-only function');
     console.log('  records              - List unspent records');
     console.log('  sign                 - Sign a message');
+    console.log('  wait                 - Wait for transaction confirmation');
     console.log('');
-    console.log('Usage examples:');
-    console.log('  npm run aleo balance');
-    console.log('  npm run aleo transfer aleo1... 10 public');
-    console.log('  npm run aleo execute credits.aleo transfer_public aleo1... 1000000u64');
-    console.log('  npm run aleo view credits.aleo account aleo1...');
-    console.log('  npm run aleo records credits.aleo');
-    console.log('  npm run aleo sign "Hello, Aleo!"');
   }
 }
 

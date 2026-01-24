@@ -9,6 +9,9 @@ import {
   type RecordPlaintext,
 } from '@provablehq/sdk';
 
+
+
+
 export type { RecordPlaintext };
 
 /**
@@ -81,6 +84,33 @@ export interface AleoBalance {
 }
 
 /**
+ * Aleo transaction receipt containing confirmation details
+ */
+export interface AleoTransactionReceipt {
+  /** Transaction ID */
+  transactionId: string;
+  /** Transaction status: 'accepted' or 'rejected' */
+  status: 'accepted' | 'rejected';
+  /** Transaction type: 'execute', 'deploy', or 'fee' */
+  type: string;
+  /** Block index where transaction was confirmed */
+  index: bigint;
+  /** Full confirmed transaction data */
+  transaction: any; // TransactionJSON from SDK
+  /** Finalize operations */
+  finalize: any[];
+  /** Timestamp when receipt was obtained */
+  confirmedAt: Date;
+}
+
+export interface AleoWaitForReceiptOptions {
+  /** Polling interval in milliseconds (default: 2000) */
+  checkInterval?: number;
+  /** Maximum time to wait in milliseconds (default: 45000) */
+  timeout?: number;
+}
+
+/**
  * Interface for Aleo wallet providers.
  *
  * Note: Some methods are only available for private key wallets due to SDK constraints.
@@ -122,6 +152,39 @@ export interface IAleoWalletProvider {
   signMessage(message: Uint8Array): Promise<string>;
 
   verifySignature(message: Uint8Array, signature: string, address: string): Promise<boolean>;
+
+  /**
+   * Wait for a transaction to be confirmed on the Aleo network
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: Fully functional (uses network polling)
+   */
+  waitForTransactionReceipt(
+    transactionId: string,
+    options?: AleoWaitForReceiptOptions
+  ): Promise<AleoTransactionReceipt>;
+
+  /**
+   * Send transfer and wait for confirmation
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: NOT SUPPORTED (requires private key for transfer)
+   */
+  transferAndWait(
+    options: AleoTransferOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ transactionId: string; receipt: AleoTransactionReceipt }>;
+
+  /**
+   * Execute program and wait for confirmation
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: Requires adapter to implement `executeTransaction()`
+   */
+  executeAndWait(
+    options: AleoExecuteOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }>;
 }
 
 export type PrivateKeyAleoWalletConfig = {
@@ -196,6 +259,11 @@ export function isValidAleoAddress(address: string): boolean {
 export function isValidAleoPrivateKey(privateKey: string): boolean {
   return /^APrivateKey1[a-zA-Z0-9]{59}$/.test(privateKey);
 }
+
+export function isValidAleoTransactionId(transactionId: string): boolean {
+  return /^at1[a-z0-9]{58}$/.test(transactionId);
+}
+
 
 export class AleoWalletProvider implements IAleoWalletProvider {
   private readonly networkClient: AleoNetworkClient;
@@ -650,8 +718,138 @@ export class AleoWalletProvider implements IAleoWalletProvider {
     return this.networkClient;
   }
 
+
   getProgramManager(): ProgramManager {
     console.log('[AleoWalletProvider.getProgramManager] Returning program manager');
     return this.programManager;
+  }
+
+  /**
+   * Wait for a transaction to be confirmed on the Aleo network.
+   * 
+   * This method polls the network until the transaction is confirmed or timeout is reached.
+   * 
+   * ⚠️ IMPORTANT: This method will throw an error if the transaction is rejected.
+   * There is no way to suppress this behavior due to SDK limitations.
+   * 
+   * @param transactionId - The transaction ID to wait for
+   * @param options - Polling configuration options
+   * @returns Promise that resolves with transaction receipt (only for accepted transactions)
+   * @throws {Error} If transaction is rejected, timeout is reached, or transaction ID is malformed
+   */
+  async waitForTransactionReceipt(
+    transactionId: string,
+    options: AleoWaitForReceiptOptions = {}
+  ): Promise<AleoTransactionReceipt> {
+    const {
+      checkInterval = 2000,
+      timeout = 45000,
+    } = options;
+
+    console.log('[AleoWalletProvider.waitForTransactionReceipt] Waiting for transaction...');
+    console.log('[AleoWalletProvider.waitForTransactionReceipt] Transaction ID:', transactionId);
+
+    // Validate transaction ID format first to prevent infinite polling on malformed IDs
+    // The SDK sometimes retries forever on 400 errors for invalid IDs
+    if (!isValidAleoTransactionId(transactionId)) {
+      console.error('[AleoWalletProvider.waitForTransactionReceipt] Invalid transaction ID format');
+      throw new Error(
+        `Invalid transaction ID format: ${transactionId}. ` +
+        `Please verify the transaction ID is correct (should start with 'at1' and be 61 chars long).`
+      );
+    }
+
+    console.log('[AleoWalletProvider.waitForTransactionReceipt] Check interval:', checkInterval, 'ms');
+    console.log('[AleoWalletProvider.waitForTransactionReceipt] Timeout:', timeout, 'ms');
+
+    try {
+      const startTime = Date.now();
+
+      // SDK will throw if transaction is rejected - no way to suppress this
+      const confirmedTx = await this.networkClient.waitForTransactionConfirmation(
+        transactionId,
+        checkInterval,
+        timeout,
+      );
+
+      const duration = Date.now() - startTime;
+      console.log('[AleoWalletProvider.waitForTransactionReceipt] Transaction confirmed in', duration, 'ms');
+      console.log('[AleoWalletProvider.waitForTransactionReceipt] Status:', confirmedTx.status);
+      console.log('[AleoWalletProvider.waitForTransactionReceipt] Type:', confirmedTx.type);
+
+      // At this point, status is ALWAYS 'accepted' because SDK throws on 'rejected'
+      return {
+        transactionId,
+        status: confirmedTx.status as 'accepted' | 'rejected', // Actually always 'accepted'
+        type: confirmedTx.type,
+        index: confirmedTx.index,
+        transaction: confirmedTx.transaction,
+        finalize: confirmedTx.finalize,
+        confirmedAt: new Date(),
+      };
+    } catch (error) {
+      console.error('[AleoWalletProvider.waitForTransactionReceipt] Error:', error);
+      
+      // Re-throw with more context based on error type
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('did not appear')) {
+          throw new Error(
+            `Transaction ${transactionId} did not confirm within ${timeout}ms. ` +
+            `The transaction may still be pending - check the transaction status manually.`
+          );
+        }
+        if (error.message.includes('Malformed') || error.message.includes('Invalid URL')) {
+          throw new Error(
+            `Invalid transaction ID format: ${transactionId}. ` +
+            `Please verify the transaction ID is correct.`
+          );
+        }
+        if (error.message.includes('rejected')) {
+          // Transaction was rejected by the network
+          throw new Error(
+            `Transaction ${transactionId} was rejected by the network. ` +
+            `Check that the fee payer has sufficient credits and inputs are valid.`
+          );
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Convenience method: Send transfer and wait for confirmation in one call
+   */
+  async transferAndWait(
+    options: AleoTransferOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ transactionId: string; receipt: AleoTransactionReceipt }> {
+    console.log('[AleoWalletProvider.transferAndWait] Initiating transfer...');
+    
+    const transactionId = await this.transfer(options);
+    console.log('[AleoWalletProvider.transferAndWait] Transfer submitted:', transactionId);
+    console.log('[AleoWalletProvider.transferAndWait] Waiting for confirmation...');
+    
+    const receipt = await this.waitForTransactionReceipt(transactionId, receiptOptions);
+    
+    return { transactionId, receipt };
+  }
+
+  /**
+   * Convenience method: Execute program and wait for confirmation in one call
+   */
+  async executeAndWait(
+    options: AleoExecuteOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    console.log('[AleoWalletProvider.executeAndWait] Initiating execution...');
+    
+    const result = await this.execute(options);
+    console.log('[AleoWalletProvider.executeAndWait] Execution submitted:', result.transactionId);
+    console.log('[AleoWalletProvider.executeAndWait] Waiting for confirmation...');
+    
+    const receipt = await this.waitForTransactionReceipt(result.transactionId, receiptOptions);
+    
+    return { result, receipt };
   }
 }

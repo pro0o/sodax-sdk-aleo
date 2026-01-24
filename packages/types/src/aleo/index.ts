@@ -97,6 +97,34 @@ export interface AleoBalance {
  * Note: Some methods are only available for private key wallets due to SDK constraints.
  * See method documentation for details.
  */
+
+/**
+ * Aleo transaction receipt containing confirmation details
+ */
+export interface AleoTransactionReceipt {
+  /** Transaction ID */
+  transactionId: string;
+  /** Transaction status: 'accepted' or 'rejected' */
+  status: 'accepted' | 'rejected';
+  /** Transaction type: 'execute', 'deploy', or 'fee' */
+  type: string;
+  /** Block index where transaction was confirmed */
+  index: bigint;
+  /** Full confirmed transaction data */
+  transaction: any; // TransactionJSON from SDK
+  /** Finalize operations */
+  finalize: any[];
+  /** Timestamp when receipt was obtained */
+  confirmedAt: Date;
+}
+
+export interface AleoWaitForReceiptOptions {
+  /** Polling interval in milliseconds (default: 2000) */
+  checkInterval?: number;
+  /** Maximum time to wait in milliseconds (default: 45000) */
+  timeout?: number;
+}
+
 export interface IAleoWalletProvider extends WalletAddressProvider {
   getWalletAddress(): Promise<string>;
 
@@ -133,4 +161,37 @@ export interface IAleoWalletProvider extends WalletAddressProvider {
   signMessage(message: Uint8Array): Promise<string>;
 
   verifySignature(message: Uint8Array, signature: string, address: string): Promise<boolean>;
+
+  /**
+   * Wait for a transaction to be confirmed on the Aleo network
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: Fully functional (uses network polling)
+   */
+  waitForTransactionReceipt(
+    transactionId: string,
+    options?: AleoWaitForReceiptOptions
+  ): Promise<AleoTransactionReceipt>;
+
+  /**
+   * Send transfer and wait for confirmation
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: NOT SUPPORTED (requires private key for transfer)
+   */
+  transferAndWait(
+    options: AleoTransferOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ transactionId: string; receipt: AleoTransactionReceipt }>;
+
+  /**
+   * Execute program and wait for confirmation
+   * 
+   * - PK Wallets: Fully functional
+   * - Browser Wallets: Requires adapter to implement `executeTransaction()`
+   */
+  executeAndWait(
+    options: AleoExecuteOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }>;
 }
