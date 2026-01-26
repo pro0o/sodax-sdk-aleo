@@ -62,7 +62,17 @@
     "@stellar/stellar-sdk": "catalog:",
     "@mysten/sui": "catalog:",
     "@mysten/wallet-standard": "catalog:",
-    "@provablehq/sdk": "catalog:"
+    "@provablehq/sdk": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-core": "catalog:",
+    "@provablehq/aleo-wallet-standard": "catalog:",
+    "@provablehq/aleo-types": "catalog:"
+  },
+  "optionalDependencies": {
+    "@provablehq/aleo-wallet-adaptor-leo": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-shield": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-puzzle": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-fox": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-soter": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

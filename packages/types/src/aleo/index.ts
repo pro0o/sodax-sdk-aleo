@@ -19,29 +19,6 @@ export interface AleoOutput {
   toString(): string;
 }
 
-/**
- * Interface for browser extension wallets (Leo Wallet, Puzzle, Shield, etc.)
- *
- * Browser wallets have limited capabilities due to SDK constraints:
- * - They cannot expose private keys for security reasons
- * - The SDK requires private keys for execution, view functions, and records
- * - Only `executeTransaction` can handle full execution flow
- */
-export interface AleoWalletAdapter {
-  getAddress(): Promise<string>;
-  executeTransaction?(options: AleoExecuteTransactionOptions): Promise<string>;
-  isConnected(): boolean;
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-}
-
-export interface AleoExecuteTransactionOptions {
-  programName: string;
-  functionName: string;
-  inputs: string[];
-  priorityFee?: number;
-}
-
 export interface AleoExecuteOptions {
   programName: string;
   functionName: string;

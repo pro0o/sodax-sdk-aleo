@@ -13,29 +13,36 @@ import type {
   AleoExecutionResult,
   AleoTransactionReceipt,
   AleoWaitForReceiptOptions,
-  AleoWalletAdapter,
 } from '@sodax/types';
 
+import type {
+  Account as ProvableAccount,
+  TransactionOptions as ProvableTransactionOptions,
+} from '@provablehq/aleo-types';
+
+import type { BaseAleoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-core';
+
 export type { RecordPlaintext };
-
 export type AleoNetwork = 'mainnet' | 'testnet';
-
 export type PrivateKeyAleoWalletConfig = {
+  type: 'privateKey';
   rpcUrl: string;
   privateKey: string;
   network?: AleoNetwork;
 };
 
 export type SeedAleoWalletConfig = {
+  type: 'seed';
   rpcUrl: string;
   seed: Uint8Array;
   network?: AleoNetwork;
 };
 
 export type BrowserExtensionAleoWalletConfig = {
+  type: 'browserExtension';
   rpcUrl: string;
-  networkClient: AleoNetworkClient;
-  walletAdapter: AleoWalletAdapter;
+  provableAdapter: BaseAleoWalletAdapter;
+  network?: AleoNetwork;
 };
 
 export type AleoWalletConfig = 
@@ -50,21 +57,22 @@ export type PkAleoWallet = {
 
 export type BrowserExtensionAleoWallet = {
   type: 'browserExtension';
-  adapter: AleoWalletAdapter;
+  adapter: BaseAleoWalletAdapter;
+  connectedAccount: ProvableAccount | null;
 };
 
 export type AleoWallet = PkAleoWallet | BrowserExtensionAleoWallet;
 
 export function isPrivateKeyConfig(config: AleoWalletConfig): config is PrivateKeyAleoWalletConfig {
-  return 'privateKey' in config && typeof config.privateKey === 'string';
+  return config.type === 'privateKey';
 }
 
 export function isSeedConfig(config: AleoWalletConfig): config is SeedAleoWalletConfig {
-  return 'seed' in config && config.seed instanceof Uint8Array;
+  return config.type === 'seed';
 }
 
 export function isBrowserExtensionConfig(config: AleoWalletConfig): config is BrowserExtensionAleoWalletConfig {
-  return 'walletAdapter' in config && 'networkClient' in config;
+  return config.type === 'browserExtension';
 }
 
 export function isPkAleoWallet(wallet: AleoWallet): wallet is PkAleoWallet {
@@ -75,31 +83,11 @@ export function isBrowserExtensionAleoWallet(wallet: AleoWallet): wallet is Brow
   return wallet.type === 'browserExtension';
 }
 
-const ALEO_ERROR_CODES = {
-  INVALID_CONFIG: 'INVALID_CONFIG',
-  EXECUTION_ERROR: 'EXECUTION_ERROR',
-  TX_TIMEOUT: 'TX_TIMEOUT',
-  TX_REJECTED: 'TX_REJECTED',
-  INVALID_TX_ID: 'INVALID_TX_ID',
-  BROWSER_WALLET_UNSUPPORTED: 'BROWSER_WALLET_UNSUPPORTED',
-} as const;
-
-export class AleoWalletError extends Error {
-  constructor(
-    message: string,
-    public readonly code: keyof typeof ALEO_ERROR_CODES,
-  ) {
-    super(message);
-    this.name = 'AleoWalletError';
-  }
-}
-
 export class AleoWalletProvider implements IAleoWalletProvider {
-  private readonly networkClient: AleoNetworkClient;
-  private readonly wallet: AleoWallet;
-  private readonly programManager: ProgramManager;
+  public readonly networkClient: AleoNetworkClient;
+  public readonly wallet: AleoWallet;
+  public readonly programManager: ProgramManager;
   private readonly keyProvider: AleoKeyProvider;
-
   constructor(config: AleoWalletConfig) {
     this.keyProvider = new AleoKeyProvider();
     this.keyProvider.useCache(true);
@@ -124,19 +112,32 @@ export class AleoWalletProvider implements IAleoWalletProvider {
       this.programManager = new ProgramManager(config.rpcUrl, this.keyProvider, recordProvider);
       this.programManager.setAccount(account);
     } else if (isBrowserExtensionConfig(config)) {
-      this.networkClient = config.networkClient;
-      this.wallet = { type: 'browserExtension', adapter: config.walletAdapter };
+      this.networkClient = new AleoNetworkClient(config.rpcUrl);
+      
+      this.wallet = { 
+        type: 'browserExtension', 
+        adapter: config.provableAdapter,
+        connectedAccount: null,
+      };
 
-      // For browser wallets, program manager has limited capabilities
-      // (can't access private key directly)
       this.programManager = new ProgramManager(
         config.rpcUrl,
         this.keyProvider,
         undefined, // No record provider for browser wallets
       );
     } else {
-      throw new AleoWalletError('Invalid wallet configuration', 'INVALID_CONFIG');
+      throw new Error('Invalid wallet configuration');
     }
+  }
+
+  async executeAndWait(
+    options: AleoExecuteOptions,
+    receiptOptions?: AleoWaitForReceiptOptions
+  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    const result = await this.execute(options);
+    const receipt = await this.waitForTransactionReceipt(result.transactionId, receiptOptions);
+    
+    return { result, receipt };
   }
 
   async getWalletAddress(): Promise<string> {
@@ -145,10 +146,13 @@ export class AleoWalletProvider implements IAleoWalletProvider {
     }
 
     if (isBrowserExtensionAleoWallet(this.wallet)) {
-      return this.wallet.adapter.getAddress();
+      if (!this.wallet.adapter.connected || !this.wallet.connectedAccount) {
+        throw new Error('Browser wallet not connected');
+      }
+      return this.wallet.connectedAccount.address;
     }
 
-    throw new AleoWalletError('Invalid wallet configuration', 'INVALID_CONFIG');
+    throw new Error('Invalid wallet configuration');
   }
 
   async execute(options: AleoExecuteOptions): Promise<AleoExecutionResult> {
@@ -173,43 +177,40 @@ export class AleoWalletProvider implements IAleoWalletProvider {
           outputs: undefined,
         };
       } catch (error) {
-        throw new AleoWalletError(
-          error instanceof Error ? error.message : 'Execution failed',
-          'EXECUTION_ERROR'
-        );
+        throw new Error(error instanceof Error ? error.message : 'Execution failed');
       }
     }
 
     if (isBrowserExtensionAleoWallet(this.wallet)) {
-      if (this.wallet.adapter.executeTransaction) {
-        try {
-          const txId = await this.wallet.adapter.executeTransaction({
-            programName,
-            functionName,
-            inputs,
-            priorityFee,
-          });
-
-          return {
-            transactionId: txId,
-            outputs: undefined,
-          };
-        } catch (error) {
-          throw new AleoWalletError(
-            error instanceof Error ? error.message : 'Browser wallet execution failed',
-            'EXECUTION_ERROR'
-          );
-        }
+      if (!this.wallet.adapter.connected || !this.wallet.connectedAccount) {
+        throw new Error('Browser wallet not connected');
       }
 
-      throw new AleoWalletError(
-        'Browser wallet execution not yet implemented. ' +
-        'The wallet adapter must implement executeTransaction() or handle authorization internally.',
-        'BROWSER_WALLET_UNSUPPORTED'
-      );
+      try {
+        const provableOptions: ProvableTransactionOptions = {
+          program: programName,
+          function: functionName,
+          inputs,
+          fee: priorityFee || 0.001,
+          privateFee: privateFee || false,
+        };
+
+        const result = await this.wallet.adapter.executeTransaction(provableOptions);
+
+        if (!result?.transactionId) {
+          throw new Error('No transaction ID returned from browser wallet');
+        }
+
+        return {
+          transactionId: result.transactionId,
+          outputs: undefined,
+        };
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Browser wallet execution failed');
+      }
     }
 
-    throw new AleoWalletError('Invalid wallet configuration', 'INVALID_CONFIG');
+    throw new Error('Invalid wallet configuration');
   }
 
   async waitForTransactionReceipt(
@@ -240,47 +241,26 @@ export class AleoWalletProvider implements IAleoWalletProvider {
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('timeout') || error.message.includes('did not appear')) {
-          throw new AleoWalletError(
+          throw new Error(
             `Transaction ${transactionId} did not confirm within ${timeout}ms. ` +
-            `The transaction may still be pending - check the transaction status manually.`,
-            'TX_TIMEOUT'
+            `The transaction may still be pending - check the transaction status manually.`
           );
         }
         if (error.message.includes('Malformed') || error.message.includes('Invalid URL')) {
-          throw new AleoWalletError(
+          throw new Error(
             `Invalid transaction ID format: ${transactionId}. ` +
-            `Please verify the transaction ID is correct.`,
-            'INVALID_TX_ID'
+            `Please verify the transaction ID is correct.`
           );
         }
         if (error.message.includes('rejected')) {
-          throw new AleoWalletError(
+          throw new Error(
             `Transaction ${transactionId} was rejected by the network. ` +
-            `Check that the fee payer has sufficient credits and inputs are valid.`,
-            'TX_REJECTED'
+            `Check that the fee payer has sufficient credits and inputs are valid.`
           );
         }
       }
       
       throw error;
     }
-  }
-
-  async executeAndWait(
-    options: AleoExecuteOptions,
-    receiptOptions?: AleoWaitForReceiptOptions
-  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
-    const result = await this.execute(options);
-    const receipt = await this.waitForTransactionReceipt(result.transactionId, receiptOptions);
-    
-    return { result, receipt };
-  }
-
-  getNetworkClient(): AleoNetworkClient {
-    return this.networkClient;
-  }
-
-  getProgramManager(): ProgramManager {
-    return this.programManager;
   }
 }
