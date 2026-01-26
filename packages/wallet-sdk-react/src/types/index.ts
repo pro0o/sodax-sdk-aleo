@@ -18,4 +18,10 @@ export enum WalletId {
   PHANTOM = 'phantom',
   SUI = 'sui',
   KEPLR = 'keplr',
+  // Aleo wallet adapters
+  LEO = 'leo',
+  PUZZLE = 'puzzle',
+  FOX = 'fox',
+  SOTER = 'soter',
+  SHIELD = 'shield',
 }

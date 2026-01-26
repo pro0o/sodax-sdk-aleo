@@ -42,6 +42,10 @@
     "@injectivelabs/wallet-cosmos": "catalog:",
     "@mysten/dapp-kit": "catalog:",
     "@mysten/sui": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-core": "catalog:",
+    "@provablehq/aleo-wallet-standard": "catalog:",
+    "@provablehq/aleo-types": "catalog:",
+    "@provablehq/sdk": "catalog:",
     "@sodax/wallet-sdk-core": "workspace:*",
     "@sodax/types": "workspace:*",
     "@solana/spl-token": "catalog:",
@@ -55,6 +59,13 @@
     "wagmi": "catalog:",
     "zustand": "4.5.2",
     "bs58": "6.0.0"
+  },
+  "optionalDependencies": {
+    "@provablehq/aleo-wallet-adaptor-leo": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-shield": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-puzzle": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-fox": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-soter": "catalog:"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

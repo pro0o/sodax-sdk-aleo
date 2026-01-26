@@ -13,6 +13,7 @@ import { StellarXService } from './xchains/stellar';
 import { SuiXService } from './xchains/sui';
 import { IconXService } from './xchains/icon';
 import { IconHanaXConnector } from './xchains/icon/IconHanaXConnector';
+import { AleoXService } from './xchains/aleo';
 
 type XWagmiStore = {
   xServices: Partial<Record<ChainType, XService>>;
@@ -24,7 +25,7 @@ type XWagmiStore = {
 
 const initXServices = () => {
   const xServices = {};
-  ['EVM', 'INJECTIVE', 'STELLAR', 'SUI', 'SOLANA', 'ICON'].forEach(key => {
+  ['EVM', 'INJECTIVE', 'STELLAR', 'SUI', 'SOLANA', 'ICON', 'ALEO'].forEach(key => {
     const xChainType = key as ChainType;
 
     switch (xChainType) {
@@ -42,7 +43,7 @@ const initXServices = () => {
         xServices[xChainType].setXConnectors([]);
         break;
 
-      // Injective, Stellar, Icon wallet connectors are supported by sodax wallet-sdk-react sdk.
+      // Injective, Stellar, Icon, Aleo wallet connectors are supported by sodax wallet-sdk-react sdk.
       case 'INJECTIVE':
         xServices[xChainType] = InjectiveXService.getInstance();
         xServices[xChainType].setXConnectors([new InjectiveMetamaskXConnector(), new InjectiveKelprXConnector()]);
@@ -54,6 +55,10 @@ const initXServices = () => {
       case 'ICON':
         xServices[xChainType] = IconXService.getInstance();
         xServices[xChainType].setXConnectors([new IconHanaXConnector()]);
+        break;
+      case 'ALEO':
+        xServices[xChainType] = AleoXService.getInstance();
+        xServices[xChainType].setXConnectors([]);
         break;
       default:
         break;
