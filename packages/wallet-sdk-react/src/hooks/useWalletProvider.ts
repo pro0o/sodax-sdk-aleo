@@ -6,6 +6,7 @@ import type {
   ISolanaWalletProvider,
   IStellarWalletProvider,
   ISuiWalletProvider,
+  IAleoWalletProvider,
 } from '@sodax/types';
 import { useMemo } from 'react';
 import {
@@ -15,6 +16,8 @@ import {
   InjectiveWalletProvider,
   StellarWalletProvider,
   SolanaWalletProvider,
+  AleoWalletProvider,
+  type BrowserExtensionAleoWalletConfig,
 } from '@sodax/wallet-sdk-core';
 import { getXChainType } from '../actions';
 import { usePublicClient, useWalletClient } from 'wagmi';
@@ -22,13 +25,15 @@ import { type SolanaXService, type StellarXService, useXAccount, useXService } f
 import type { SuiXService } from '../xchains/sui/SuiXService';
 import { CHAIN_INFO, SupportedChainId } from '../xchains/icon/IconXService';
 import type { InjectiveXService } from '../xchains/injective/InjectiveXService';
+import type { AleoXService } from '../xchains/aleo/AleoXService';
+import { Network } from '@provablehq/aleo-types';
 
 /**
  * Hook to get the appropriate wallet provider based on the chain type.
- * Supports EVM, SUI, ICON and INJECTIVE chains.
+ * Supports EVM, SUI, ICON, INJECTIVE, STELLAR, SOLANA and ALEO chains.
  *
  * @param {ChainId | undefined} spokeChainId - The chain ID to get the wallet provider for. Can be any valid ChainId value.
- * @returns {EvmWalletProvider | SuiWalletProvider | IconWalletProvider | InjectiveWalletProvider | undefined}
+ * @returns {EvmWalletProvider | SuiWalletProvider | IconWalletProvider | InjectiveWalletProvider | StellarWalletProvider | SolanaWalletProvider | AleoWalletProvider | undefined}
  * The appropriate wallet provider instance for the given chain ID, or undefined if:
  * - No chain ID is provided
  * - Chain type is not supported
@@ -49,6 +54,7 @@ export function useWalletProvider(
   | IInjectiveWalletProvider
   | IStellarWalletProvider
   | ISolanaWalletProvider
+  | IAleoWalletProvider
   | undefined {
   const xChainType = getXChainType(spokeChainId);
   // EVM-specific hooks
@@ -139,6 +145,29 @@ export function useWalletProvider(
           wallet: solanaXService.wallet,
           connection: solanaXService.connection,
         });
+      }
+
+      case 'ALEO': {
+        const aleoXService = xService as AleoXService;
+
+        if (!aleoXService || !aleoXService.networkClient) {
+          return undefined;
+        }
+
+        if (!aleoXService.connectedAccount) {
+          return undefined;
+        }
+
+        if (!aleoXService.walletAdapter) {
+          return undefined;
+        }
+
+        return new AleoWalletProvider({
+          type: 'browserExtension',
+          rpcUrl: aleoXService.rpcUrl,
+          provableAdapter: aleoXService.walletAdapter,
+          network: aleoXService.network === Network.MAINNET ? 'mainnet' : 'testnet',
+        } as BrowserExtensionAleoWalletConfig);
       }
 
       default:

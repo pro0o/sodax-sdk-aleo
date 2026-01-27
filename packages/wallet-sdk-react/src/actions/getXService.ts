@@ -1,6 +1,6 @@
 import type { ChainType } from '@sodax/types';
 
-import { IconXService, InjectiveXService, SolanaXService, StellarXService } from '..';
+import { AleoXService, IconXService, InjectiveXService, SolanaXService, StellarXService } from '..';
 import { SuiXService } from '..';
 import { EvmXService } from '..';
 import type { XService } from '../core';
@@ -19,6 +19,8 @@ export function getXService(xChainType: ChainType): XService {
       return InjectiveXService.getInstance();
     case 'STELLAR':
       return StellarXService.getInstance();
+    case 'ALEO':
+      return AleoXService.getInstance();
     default:
       throw new Error(`Unsupported chain type: ${xChainType}`);
   }

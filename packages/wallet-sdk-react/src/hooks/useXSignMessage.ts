@@ -71,6 +71,12 @@ export function useXSignMessage(): UseMutationResult<
           break;
         }
 
+        case 'ALEO': {
+          // Aleo wallet adapters don't currently support arbitrary message signing
+          console.warn('Aleo message signing is not yet supported by wallet adapters');
+          break;
+        }
+
         default:
           console.warn('Unsupported chain type');
           break;

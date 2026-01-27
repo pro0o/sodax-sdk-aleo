@@ -2,6 +2,7 @@ import { XService } from '@/core/XService';
 import type { XToken } from '@sodax/types';
 import { Network, type Account } from '@provablehq/aleo-types';
 import { AleoNetworkClient } from '@provablehq/sdk';
+import type { BaseAleoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-core';
 
 export class AleoXService extends XService {
   private static instance: AleoXService;
@@ -9,6 +10,8 @@ export class AleoXService extends XService {
   public networkClient: AleoNetworkClient | undefined;
   public connectedAccount: Account | undefined;
   public network: Network = Network.TESTNET;
+  public walletAdapter: BaseAleoWalletAdapter | undefined;
+  public rpcUrl: string = 'https://api.explorer.aleo.org/v1';
 
   private constructor() {
     super('ALEO' as const);
@@ -22,11 +25,20 @@ export class AleoXService extends XService {
   }
 
   public setNetworkClient(rpcUrl: string): void {
+    this.rpcUrl = rpcUrl;
     this.networkClient = new AleoNetworkClient(rpcUrl);
   }
 
   public setNetwork(network: Network): void {
     this.network = network;
+  }
+
+  public setWalletAdapter(adapter: BaseAleoWalletAdapter): void {
+    this.walletAdapter = adapter;
+  }
+
+  public clearWalletAdapter(): void {
+    this.walletAdapter = undefined;
   }
 
   public setConnectedAccount(account: Account): void {

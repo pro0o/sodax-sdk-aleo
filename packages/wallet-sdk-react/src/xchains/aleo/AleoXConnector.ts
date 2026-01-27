@@ -57,6 +57,7 @@ export class AleoXConnector extends XConnector {
         // Store connected state in service
         const service = this.getXService();
         service.setConnectedAccount(account);
+        service.setWalletAdapter(this.adapter);
         console.log('[AleoXConnector] Account stored in service');
         
         return xAccount;
@@ -82,6 +83,7 @@ export class AleoXConnector extends XConnector {
       await this.adapter.disconnect();
       const service = this.getXService();
       service.clearConnectedAccount();
+      service.clearWalletAdapter();
     } catch (error) {
       console.error('Aleo wallet disconnection failed:', error);
     }
