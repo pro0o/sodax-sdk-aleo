@@ -1,185 +1,204 @@
 'use client';
 
-import { useAleoWallet } from '@sodax/wallet-sdk-react';
-import { PuzzleWalletAdapter } from '@provablehq/aleo-wallet-adaptor-puzzle';
+import { useState, useCallback } from 'react';
+import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { Network } from '@provablehq/aleo-types';
-import { useState } from 'react';
+import { useXService, AleoXService } from '@sodax/wallet-sdk-react';
 
 export function AleoWalletTest() {
-  const { address, connected, network, connect, disconnect, execute, getBalance } = useAleoWallet();
-  
+  const { 
+    address, 
+    connected, 
+    connecting, 
+    network, 
+    wallets, 
+    wallet, 
+    selectWallet, 
+    connect, 
+    disconnect, 
+    executeTransaction 
+  } = useWallet();
+  const service = useXService('ALEO') as AleoXService | undefined;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
-  
-  // Transaction inputs
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
+  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(null);
 
-  const handleConnect = async () => {
+  const installedWallets = wallets.filter(w => w.readyState === 'Installed');
+
+  const handleSelectWallet = useCallback((walletName: string) => {
+    setSelectedWalletName(walletName);
+    selectWallet(walletName as any);
+    setError(null);
+  }, [selectWallet]);
+
+  const handleConnect = useCallback(async () => {
+    if (!selectedWalletName) {
+      setError('Please select a wallet first');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+      await connect(Network.TESTNET);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Connection failed';
       
-      const adapter = new PuzzleWalletAdapter();
-      await connect(adapter, Network.TESTNET);
+      if (message.includes('not connected') || message.includes('connection expired')) {
+        setError(`${selectedWalletName}: Please unlock your wallet extension and try again`);
+      } else if (message.includes('not selected')) {
+        setError(`Please select a wallet first`);
+      } else if (message.includes('rejected')) {
+        setError(`Connection rejected. Please approve in your ${selectedWalletName} extension`);
+      } else {
+        setError(`${selectedWalletName}: ${message}`);
+      }
       
-      setSuccess('✅ Wallet connected successfully!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+      console.error('[Aleo Wallet]', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedWalletName, connect]);
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      
       await disconnect();
       setBalance(null);
       setTxId(null);
-      setRecipient('');
-      setAmount('');
-      
-      setSuccess('✅ Wallet disconnected');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to disconnect');
+      setSelectedWalletName(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Disconnect failed');
     } finally {
       setLoading(false);
     }
-  };
+  }, [disconnect]);
 
-  const handleGetBalance = async () => {
+  const handleGetBalance = useCallback(async () => {
+    if (!service || !address) return;
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const bal = await getBalance();
-      const formattedBalance = (Number(bal) / 1_000_000).toFixed(6);
-      setBalance(formattedBalance);
-      
-      setSuccess('✅ Balance fetched');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get balance');
+      const bal = await service.getBalance(address, { symbol: 'ALEO', address: 'credits.aleo', decimals: 6, name: 'Aleo Credits' } as any);
+      setBalance((Number(bal) / 1_000_000).toFixed(6));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to get balance');
     } finally {
       setLoading(false);
     }
-  };
+  }, [service, address]);
 
-  const handleTransfer = async () => {
+  const handleTransfer = useCallback(async () => {
     if (!recipient || !amount) {
-      setError('Please enter recipient address and amount');
+      setError('Enter recipient and amount');
       return;
     }
-
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      
-      const amountInMicrocredits = Math.floor(parseFloat(amount) * 1_000_000);
-      
-      const result = await execute({
-        programName: 'credits.aleo',
-        functionName: 'transfer_public',
-        inputs: [recipient, `${amountInMicrocredits}u64`],
-        priorityFee: 100_000, // 1.0 credits in microcredits (1 credit = 1,000,000 microcredits)
+      const microcredits = Math.floor(parseFloat(amount) * 1_000_000);
+      const result = await executeTransaction({
+        program: 'credits.aleo',
+        function: 'transfer_public',
+        inputs: [recipient, `${microcredits}u64`],
+        fee: 100_000,
         privateFee: false,
       });
-
       if (result?.transactionId) {
         setTxId(result.transactionId);
-        setSuccess(`✅ Transaction submitted!`);
         setRecipient('');
         setAmount('');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute transaction');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Transaction failed');
     } finally {
       setLoading(false);
     }
-  };
+  }, [recipient, amount, executeTransaction]);
 
   return (
-    <div className="max-w-3xl space-y-6">
-      {/* Status Banner */}
-      <div className={`p-4 rounded-lg border-2 ${connected ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
+    <div className="max-w-xl space-y-4 p-4">
+      {/* Status */}
+      <div className={`p-3 rounded border ${connected ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-300'}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-400'}`} />
-            <span className="font-semibold">
-              {connected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-          {network !== undefined && (
-            <span className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-              {network === Network.MAINNET ? 'Mainnet' : 'Testnet'}
-            </span>
-          )}
+          <span className="font-medium">{connected ? '🟢 Connected' : '⚪ Disconnected'}</span>
+          {network && <span className="text-sm text-blue-600">{network === Network.MAINNET ? 'Mainnet' : 'Testnet'}</span>}
         </div>
+        {wallet && <p className="text-xs text-gray-500 mt-1">Wallet: {wallet.adapter.name}</p>}
       </div>
 
-      {/* Error/Success Messages */}
-      {error && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+      {error && <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm">{error}</div>}
 
-      {success && (
-        <div className="p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded">
-          {success}
-        </div>
-      )}
-
-      {/* Wallet Info */}
-      <div className="p-6 border rounded-lg bg-white">
-        <h2 className="text-xl font-semibold mb-4">Wallet Information</h2>
-        
-        <div className="space-y-3">
-          {address && (
-            <div>
-              <label className="text-sm font-medium text-gray-600">Address</label>
-              <p className="font-mono text-sm break-all bg-gray-50 p-3 rounded mt-1">
-                {address}
-              </p>
-            </div>
-          )}
-
-          {balance !== null && (
-            <div>
-              <label className="text-sm font-medium text-gray-600">Balance</label>
-              <p className="text-2xl font-bold mt-1">{balance} ALEO</p>
-            </div>
-          )}
-        </div>
+      {/* Wallet Info / Selection */}
+      <div className="p-4 border rounded bg-white space-y-3">
+        {address && (
+          <div>
+            <label className="text-xs text-gray-500">Address</label>
+            <p className="font-mono text-xs break-all bg-gray-50 p-2 rounded">{address}</p>
+          </div>
+        )}
+        {balance && <p className="text-xl font-bold">{balance} ALEO</p>}
 
         {!connected ? (
-          <button
-            onClick={handleConnect}
-            disabled={loading}
-            className="mt-6 w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
-          >
-            {loading ? 'Connecting...' : '🧩 Connect Puzzle Wallet'}
-          </button>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              Step 1: Select a wallet ({installedWallets.length} available)
+            </p>
+            {installedWallets.length === 0 ? (
+              <div className="text-sm text-gray-500">
+                <p>No Aleo wallets installed.</p>
+                <p className="mt-1">Install Puzzle Wallet: https://puzzle.online/</p>
+              </div>
+            ) : (
+              <>
+                {installedWallets.map(w => (
+                  <button
+                    key={w.adapter.name}
+                    onClick={() => handleSelectWallet(w.adapter.name)}
+                    disabled={loading}
+                    className={`w-full py-2 px-4 border rounded flex items-center gap-2 hover:bg-gray-50 disabled:opacity-50 transition-colors ${
+                      selectedWalletName === w.adapter.name ? 'border-blue-500 bg-blue-50' : ''
+                    }`}
+                  >
+                    {w.adapter.icon && <img src={w.adapter.icon} alt="" className="w-5 h-5" />}
+                    <span>{w.adapter.name}</span>
+                    {selectedWalletName === w.adapter.name && <span className="ml-auto text-blue-600">✓</span>}
+                  </button>
+                ))}
+                
+                {selectedWalletName && (
+                  <div className="pt-2">
+                    <p className="text-sm text-gray-600 mb-2">Step 2: Connect</p>
+                    <button
+                      onClick={handleConnect}
+                      disabled={loading || connecting}
+                      className="w-full py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+                    >
+                      {connecting ? 'Connecting...' : `Connect to ${selectedWalletName}`}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         ) : (
-          <div className="mt-6 flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={handleGetBalance}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold transition-colors"
+              className="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
             >
-              {loading ? 'Loading...' : '💰 Get Balance'}
+              Get Balance
             </button>
             <button
               onClick={handleDisconnect}
               disabled={loading}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-semibold transition-colors"
+              className="py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
             >
               Disconnect
             </button>
@@ -187,84 +206,47 @@ export function AleoWalletTest() {
         )}
       </div>
 
-      {/* Transaction Panel */}
+      {/* Transfer */}
       {connected && (
-        <div className="p-6 border rounded-lg bg-white">
-          <h2 className="text-xl font-semibold mb-4">Send Transaction</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recipient Address
-              </label>
-              <input
-                type="text"
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                placeholder="aleo1..."
-                disabled={loading}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm disabled:bg-gray-100"
-              />
+        <div className="p-4 border rounded bg-white space-y-3">
+          <h3 className="font-medium">Transfer</h3>
+          <input
+            type="text"
+            value={recipient}
+            onChange={e => setRecipient(e.target.value)}
+            placeholder="Recipient (aleo1...)"
+            className="w-full px-3 py-2 border rounded text-sm font-mono"
+          />
+          <input
+            type="number"
+            step="0.000001"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="Amount (ALEO)"
+            className="w-full px-3 py-2 border rounded text-sm"
+          />
+          <button
+            onClick={handleTransfer}
+            disabled={loading || !recipient || !amount}
+            className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+          >
+            {loading ? 'Sending...' : 'Send'}
+          </button>
+          {txId && (
+            <div className="text-sm">
+              <p className="text-gray-500">TX:</p>
+              <a
+                href={`https://testnet.explorer.provable.com/transaction/${txId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-blue-600 break-all hover:underline"
+              >
+                {txId}
+              </a>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount (ALEO)
-              </label>
-              <input
-                type="number"
-                step="0.000001"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.001"
-                disabled={loading}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-              />
-            </div>
-
-            <button
-              onClick={handleTransfer}
-              disabled={loading || !recipient || !amount}
-              className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
-            >
-              {loading ? 'Sending...' : '🚀 Send Transaction'}
-            </button>
-
-            {txId && (
-              <div className="mt-4">
-                <label className="text-sm font-medium text-gray-600">Transaction ID</label>
-                <p className="font-mono text-sm break-all bg-blue-50 p-3 rounded mt-1 border border-blue-200">
-                  {txId}
-                </p>
-                <a
-                  href={`https://testnet.explorer.provable.com/transaction/${txId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  View on Explorer →
-                </a>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
-
-      {/* Developer Info */}
-      <details className="p-4 border rounded-lg bg-gray-50">
-        <summary className="cursor-pointer font-semibold text-gray-700">
-          🔧 Developer Info
-        </summary>
-        <pre className="mt-3 text-xs bg-white p-3 rounded border overflow-auto">
-{JSON.stringify({
-  connected,
-  address: address || null,
-  network: network || null,
-  balance: balance || null,
-  txId: txId || null,
-}, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }
