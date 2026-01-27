@@ -43,6 +43,7 @@
     "@mysten/dapp-kit": "catalog:",
     "@mysten/sui": "catalog:",
     "@provablehq/aleo-wallet-adaptor-core": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-react": "catalog:",
     "@provablehq/aleo-wallet-standard": "catalog:",
     "@provablehq/aleo-types": "catalog:",
     "@provablehq/sdk": "catalog:",

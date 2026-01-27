@@ -27,6 +27,7 @@ import { CHAIN_INFO, SupportedChainId } from '../xchains/icon/IconXService';
 import type { InjectiveXService } from '../xchains/injective/InjectiveXService';
 import type { AleoXService } from '../xchains/aleo/AleoXService';
 import { Network } from '@provablehq/aleo-types';
+import { useWallet as useAleoWalletContext } from '@provablehq/aleo-wallet-adaptor-react';
 
 /**
  * Hook to get the appropriate wallet provider based on the chain type.
@@ -65,6 +66,9 @@ export function useWalletProvider(
   // Cross-chain hooks
   const xService = useXService(getXChainType(spokeChainId));
   const xAccount = useXAccount(spokeChainId);
+  
+  // Aleo-specific hook
+  const aleoWallet = useAleoWalletContext();
 
   return useMemo(() => {
     switch (xChainType) {
@@ -154,24 +158,25 @@ export function useWalletProvider(
           return undefined;
         }
 
-        if (!aleoXService.connectedAccount) {
+        // Check if wallet is connected via official adapter
+        if (!aleoWallet?.connected || !aleoWallet?.address) {
           return undefined;
         }
 
-        if (!aleoXService.walletAdapter) {
+        if (!aleoWallet.wallet?.adapter) {
           return undefined;
         }
 
         return new AleoWalletProvider({
           type: 'browserExtension',
           rpcUrl: aleoXService.rpcUrl,
-          provableAdapter: aleoXService.walletAdapter,
-          network: aleoXService.network === Network.MAINNET ? 'mainnet' : 'testnet',
+          provableAdapter: aleoWallet.wallet.adapter,
+          network: aleoWallet.network === Network.MAINNET ? 'mainnet' : 'testnet',
         } as BrowserExtensionAleoWalletConfig);
       }
 
       default:
         return undefined;
     }
-  }, [xChainType, evmPublicClient, evmWalletClient, xService, xAccount]);
+  }, [xChainType, evmPublicClient, evmWalletClient, xService, xAccount, aleoWallet]);
 }

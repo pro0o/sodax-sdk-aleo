@@ -10,7 +10,27 @@ export default defineConfig(options => ({
   clean: true,
   target: 'node18', // ✅ Use Node 18 baseline (modern features)
   treeshake: true,
-  external: ['react', 'react-dom', '@tanstack/react-query'],
+  external: [
+    'react', 
+    'react-dom', 
+    '@tanstack/react-query',
+    // Aleo wallet adapter packages - mark as external to avoid bundling
+    '@provablehq/aleo-wallet-adaptor-react',
+    '@provablehq/aleo-wallet-adaptor-core',
+    '@provablehq/aleo-wallet-adaptor-leo',
+    '@provablehq/aleo-wallet-adaptor-puzzle',
+    '@provablehq/aleo-wallet-adaptor-shield',
+    '@provablehq/aleo-wallet-adaptor-fox',
+    '@provablehq/aleo-wallet-adaptor-soter',
+    '@provablehq/aleo-wallet-standard',
+    '@provablehq/aleo-types',
+    '@provablehq/sdk',
+    // Node built-ins used by dependencies
+    'debug',
+    'supports-color',
+    'ms',
+  ],
+  noExternal: [],
   esbuildOptions(options) {
     options.platform = 'neutral'; // Don't assume node/browser — supports both
     options.mainFields = ['module', 'main'];

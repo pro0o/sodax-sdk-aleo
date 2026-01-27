@@ -17,6 +17,12 @@ import {
 } from '@solana/wallet-adapter-react';
 import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
 
+// aleo
+import { AleoWalletProvider } from '@provablehq/aleo-wallet-adaptor-react';
+import { DecryptPermission } from '@provablehq/aleo-wallet-adaptor-core';
+import { Network } from '@provablehq/aleo-types';
+import { getAleoWallets } from './xchains/aleo/utils';
+
 import type { RpcConfig } from '@sodax/types';
 
 import { Hydrate } from './Hydrate';
@@ -25,12 +31,21 @@ import { reconnectIcon } from './xchains/icon/actions';
 // import { reconnectInjective } from './xchains/injective/actions';
 import { reconnectStellar } from './xchains/stellar/actions';
 
-export const SodaxWalletProvider = ({ children, rpcConfig }: { children: React.ReactNode; rpcConfig: RpcConfig }) => {
+export const SodaxWalletProvider = ({ 
+  children, 
+  rpcConfig,
+  aleoNetwork = Network.TESTNET,
+}: { 
+  children: React.ReactNode; 
+  rpcConfig: RpcConfig;
+  aleoNetwork?: Network;
+}) => {
   const wagmiConfig = useMemo(() => {
     return createWagmiConfig(rpcConfig);
   }, [rpcConfig]);
 
   const wallets = useMemo(() => [new UnsafeBurnerWalletAdapter()], []);
+  const aleoWallets = useMemo(() => getAleoWallets(), []);
 
   return (
     <WagmiProvider config={wagmiConfig}>
@@ -38,8 +53,19 @@ export const SodaxWalletProvider = ({ children, rpcConfig }: { children: React.R
         <SuiWalletProvider autoConnect={true}>
           <SolanaConnectionProvider endpoint={rpcConfig['solana'] ?? ''}>
             <SolanaWalletProvider wallets={wallets} autoConnect>
-              <Hydrate />
-              {children}
+              <AleoWalletProvider
+                wallets={aleoWallets}
+                autoConnect={false}
+                network={aleoNetwork}
+                decryptPermission={DecryptPermission.UponRequest}
+                programs={['credits.aleo']}
+                onError={(error) => {
+                  console.error('[Aleo Wallet]', error);
+                }}
+              >
+                <Hydrate />
+                {children}
+              </AleoWalletProvider>
             </SolanaWalletProvider>
           </SolanaConnectionProvider>
         </SuiWalletProvider>
