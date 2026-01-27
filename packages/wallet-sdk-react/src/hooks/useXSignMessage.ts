@@ -8,6 +8,7 @@ import { InjectiveXService } from '@/xchains/injective';
 import { useXAccount } from './useXAccount';
 import { getEthereumAddress } from '@injectivelabs/sdk-ts';
 import { Wallet } from '@injectivelabs/wallet-base';
+import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
 
 type SignMessageReturnType = `0x${string}` | Uint8Array | string | undefined;
 
@@ -21,6 +22,7 @@ export function useXSignMessage(): UseMutationResult<
   const { signMessageAsync: evmSignMessage } = useSignMessage();
 
   const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+  const { signMessage: aleoSignMessage } = useAleoWallet();
 
   const { address: injectiveAddress } = useXAccount('INJECTIVE');
 
@@ -72,8 +74,11 @@ export function useXSignMessage(): UseMutationResult<
         }
 
         case 'ALEO': {
-          // Aleo wallet adapters don't currently support arbitrary message signing
-          console.warn('Aleo message signing is not yet supported by wallet adapters');
+          if (!aleoSignMessage) {
+            throw new Error('Aleo wallet not connected or does not support signing');
+          }
+          const res = await aleoSignMessage(message);
+          signature = res;
           break;
         }
 

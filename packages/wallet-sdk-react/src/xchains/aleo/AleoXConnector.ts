@@ -6,11 +6,11 @@ import { Network } from '@provablehq/aleo-types';
 import { AleoXService } from './AleoXService';
 
 export class AleoXConnector extends XConnector {
-  private adapter: WalletAdapter;
+  wallet: WalletAdapter;
 
-  constructor(adapter: WalletAdapter) {
-    super('ALEO', adapter.name, adapter.name);
-    this.adapter = adapter;
+  constructor(wallet: WalletAdapter) {
+    super('ALEO', wallet.name, wallet.name);
+    this.wallet = wallet;
   }
 
   getXService(): AleoXService {
@@ -18,74 +18,40 @@ export class AleoXConnector extends XConnector {
   }
 
   async connect(): Promise<XAccount | undefined> {
-    return this.connectWithOptions(Network.TESTNET, WalletDecryptPermission.NoDecrypt);
+    return this.connectWithOptions(Network.TESTNET, WalletDecryptPermission.NoDecrypt, []);
   }
 
   async connectWithOptions(
     network: Network = Network.TESTNET,
     decryptPermission: WalletDecryptPermission = WalletDecryptPermission.NoDecrypt,
-    programs?: string[]
+    programs: string[] = []
   ): Promise<XAccount | undefined> {
-    if (!this.isWalletInstalled()) {
-      console.warn(`[AleoXConnector] ${this.adapter.name} is not installed`);
-      return undefined;
-    }
-
     try {
-      await this.adapter.connect(network, decryptPermission, programs);
+      await this.wallet.connect(network, decryptPermission, programs);
       
-      if (this.adapter.account?.address) {
+      if (this.wallet.account?.address) {
         return {
-          address: this.adapter.account.address,
+          address: this.wallet.account.address,
           xChainType: 'ALEO',
         };
       }
       
       return undefined;
-    } catch (error) {
-      console.error(`[AleoXConnector] Connection failed for ${this.adapter.name}:`, error);
-      throw error;
+    } catch (e) {
+      console.log('error', e);
+      throw e;
     }
   }
 
   async disconnect(): Promise<void> {
-    try {
-      await this.adapter.disconnect();
-    } catch (error) {
-      console.error(`[AleoXConnector] Disconnect failed for ${this.adapter.name}:`, error);
-      throw error;
-    }
-  }
-
-  private isWalletInstalled(): boolean {
-    return this.adapter.readyState === 'Installed';
+    await this.wallet.disconnect();
   }
 
   public get icon(): string {
-    return this.adapter.icon || '';
-  }
-
-  public get connected(): boolean {
-    return this.adapter.connected;
+    return this.wallet.icon || '';
   }
 
   public get readyState() {
-    return this.adapter.readyState;
-  }
-
-  public get walletAdapter(): WalletAdapter {
-    return this.adapter;
-  }
-
-  public get url(): string | undefined {
-    return this.adapter.url;
-  }
-
-  public get account() {
-    return this.adapter.account;
-  }
-
-  public get network() {
-    return this.adapter.network;
+    return this.wallet.readyState;
   }
 }

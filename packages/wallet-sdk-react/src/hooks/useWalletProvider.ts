@@ -158,7 +158,6 @@ export function useWalletProvider(
           return undefined;
         }
 
-        // Check if wallet is connected via official adapter
         if (!aleoWallet?.connected || !aleoWallet?.address) {
           return undefined;
         }
