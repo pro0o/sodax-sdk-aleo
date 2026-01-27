@@ -15,6 +15,7 @@ import type { InjectiveRawSpokeProvider, InjectiveSpokeProvider } from './inject
 import type { IconRawSpokeProvider, IconSpokeProvider } from './icon/IconSpokeProvider.js';
 import type { SolanaRawSpokeProvider, SolanaSpokeProvider } from './solana/SolanaSpokeProvider.js';
 import type { SuiRawSpokeProvider, SuiSpokeProvider } from './sui/SuiSpokeProvider.js';
+import type { AleoRawSpokeProvider, AleoSpokeProvider } from './aleo/AleoSpokeProvider.js';
 import {
   SONIC_MAINNET_CHAIN_ID,
   type IEvmWalletProvider,
@@ -23,6 +24,7 @@ import {
   type IIconWalletProvider,
   type IInjectiveWalletProvider,
   type ISolanaWalletProvider,
+  type IAleoWalletProvider,
   type EvmSpokeChainConfig,
   type SonicSpokeChainConfig,
   type SpokeChainConfig,
@@ -189,7 +191,8 @@ export type IWalletProvider =
   | ISuiWalletProvider
   | IIconWalletProvider
   | IInjectiveWalletProvider
-  | ISolanaWalletProvider;
+  | ISolanaWalletProvider
+  | IAleoWalletProvider;
 
 export type SpokeProvider = (
   | EvmSpokeProvider
@@ -199,6 +202,7 @@ export type SpokeProvider = (
   | StellarSpokeProvider
   | SolanaSpokeProvider
   | SonicSpokeProvider
+  | AleoSpokeProvider
 ) &
   ISpokeProvider;
 
@@ -210,6 +214,7 @@ export type RawSpokeProvider = (
   | StellarRawSpokeProvider
   | SolanaRawSpokeProvider
   | SonicRawSpokeProvider
+  | AleoRawSpokeProvider
 ) &
   IRawSpokeProvider;
 

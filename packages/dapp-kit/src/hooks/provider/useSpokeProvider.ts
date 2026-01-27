@@ -18,6 +18,7 @@ import {
   SONIC_MAINNET_CHAIN_ID,
   SonicSpokeProvider,
   type SonicSpokeChainConfig,
+  AleoSpokeProvider,
 } from '@sodax/sdk';
 import type {
   IEvmWalletProvider,
@@ -27,6 +28,7 @@ import type {
   IInjectiveWalletProvider,
   IStellarWalletProvider,
   ISolanaWalletProvider,
+  IAleoWalletProvider,
 } from '@sodax/types';
 import { useMemo } from 'react';
 
@@ -114,6 +116,13 @@ export function useSpokeProvider(
               rpcUrl: rpcConfig.solana,
             } as SolanaChainConfig)
           : (spokeChainConfig[spokeChainId] as SolanaChainConfig),
+      );
+    }
+
+    if (xChainType === 'ALEO') {
+      return new AleoSpokeProvider(
+        walletProvider as unknown as IAleoWalletProvider, 
+        spokeChainConfig[spokeChainId]
       );
     }
 
