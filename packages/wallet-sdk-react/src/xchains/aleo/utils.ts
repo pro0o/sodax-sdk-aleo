@@ -4,7 +4,6 @@ import { LeoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-leo';
 import { FoxWalletAdapter } from '@provablehq/aleo-wallet-adaptor-fox';
 import { ShieldWalletAdapter } from '@provablehq/aleo-wallet-adaptor-shield';
 import { SoterWalletAdapter } from '@provablehq/aleo-wallet-adaptor-soter';
-import { AleoXConnector } from './AleoXConnector';
 
 export function getAleoWallets(): WalletAdapter[] {
   const wallets: WalletAdapter[] = [];
@@ -26,8 +25,4 @@ export function getAleoWallets(): WalletAdapter[] {
   }
 
   return wallets;
-}
-
-export function getAleoConnectors(): AleoXConnector[] {
-  return getAleoWallets().map(adapter => new AleoXConnector(adapter));
 }

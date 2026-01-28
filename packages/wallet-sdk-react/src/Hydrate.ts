@@ -10,8 +10,10 @@ import { useAnchorProvider } from './xchains/solana/hooks/useAnchorProvider';
 import { useConnection, useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useConfig } from 'wagmi';
+import { useAleoWalletSync } from './xchains/aleo/hooks/useAleoWalletSync';
 
 export const Hydrate = () => {
+  // Sync Aleo wallet state with store (auto-connect, account changes, network changes)
   // sui
   const suiClient = useSuiClient();
   useEffect(() => {
@@ -31,7 +33,7 @@ export const Hydrate = () => {
       SuiXService.getInstance().suiAccount = suiAccount;
     }
   }, [suiAccount]);
-
+  
   // solana
   const { connection: solanaConnection } = useConnection();
   const solanaWallet = useSolanaWallet();
@@ -51,7 +53,7 @@ export const Hydrate = () => {
       SolanaXService.getInstance().provider = solanaProvider;
     }
   }, [solanaProvider]);
-
+  
   // aleo
   const aleoWallet = useAleoWallet();
   useEffect(() => {
@@ -59,7 +61,8 @@ export const Hydrate = () => {
       AleoXService.getInstance().wallet = aleoWallet;
     }
   }, [aleoWallet]);
-
+  useAleoWalletSync();
+  
   // evm
   const wagmiConfig = useConfig();
   useEffect(() => {
@@ -67,6 +70,6 @@ export const Hydrate = () => {
       EvmXService.getInstance().wagmiConfig = wagmiConfig;
     }
   }, [wagmiConfig]);
-
+  
   return null;
 };

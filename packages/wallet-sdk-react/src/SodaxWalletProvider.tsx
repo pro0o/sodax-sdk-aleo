@@ -28,17 +28,19 @@ import type { RpcConfig } from '@sodax/types';
 import { Hydrate } from './Hydrate';
 import { createWagmiConfig } from './xchains/evm/EvmXService';
 import { reconnectIcon } from './xchains/icon/actions';
-// import { reconnectInjective } from './xchains/injective/actions';
 import { reconnectStellar } from './xchains/stellar/actions';
+import { reconnectAleo } from './xchains/aleo/actions';
 
 export const SodaxWalletProvider = ({ 
   children, 
   rpcConfig,
   aleoNetwork = Network.TESTNET,
+  aleoAutoConnect = false,
 }: { 
   children: React.ReactNode; 
   rpcConfig: RpcConfig;
   aleoNetwork?: Network;
+  aleoAutoConnect?: boolean;
 }) => {
   const wagmiConfig = useMemo(() => {
     return createWagmiConfig(rpcConfig);
@@ -55,7 +57,7 @@ export const SodaxWalletProvider = ({
             <SolanaWalletProvider wallets={wallets} autoConnect>
               <AleoWalletProvider
                 wallets={aleoWallets}
-                autoConnect={false}
+                autoConnect={aleoAutoConnect}
                 network={aleoNetwork}
                 decryptPermission={DecryptPermission.UponRequest}
                 programs={['credits.aleo']}
@@ -75,5 +77,5 @@ export const SodaxWalletProvider = ({
 };
 
 reconnectIcon();
-// reconnectInjective();
 reconnectStellar();
+reconnectAleo();

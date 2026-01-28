@@ -2,12 +2,14 @@ import { XService } from '@/core/XService';
 import type { XToken } from '@sodax/types';
 import { Network } from '@provablehq/aleo-types';
 import { AleoNetworkClient } from '@provablehq/sdk';
+import type { WalletContextState } from '@provablehq/aleo-wallet-adaptor-react';
 
 export class AleoXService extends XService {
   private static instance: AleoXService;
 
   public networkClient: AleoNetworkClient;
   public rpcUrl: string = 'https://api.explorer.provable.com/v1';
+  public wallet: WalletContextState | undefined;
 
   private constructor() {
     super('ALEO' as const);

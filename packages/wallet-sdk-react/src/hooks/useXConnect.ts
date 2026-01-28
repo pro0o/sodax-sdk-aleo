@@ -1,6 +1,8 @@
 import type { XAccount } from '@/types';
 import { useConnectWallet } from '@mysten/dapp-kit';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { Network } from '@provablehq/aleo-types';
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { useConnect } from 'wagmi';
 import type { XConnector } from '../core/XConnector';
@@ -8,6 +10,7 @@ import { useXWagmiStore } from '../useXWagmiStore';
 import type { EvmXConnector } from '../xchains/evm';
 import type { SolanaXConnector } from '../xchains/solana';
 import type { SuiXConnector } from '../xchains/sui';
+import type { AleoXConnector } from '../xchains/aleo';
 
 /**
  * Hook for connecting to various blockchain wallets across different chains
@@ -42,6 +45,7 @@ export function useXConnect(): UseMutationResult<XAccount | undefined, Error, XC
   const { mutateAsync: suiConnectAsync } = useConnectWallet();
 
   const { select, connect } = useWallet();
+  const { selectWallet: selectAleoWallet, connect: connectAleo } = useAleoWallet();
 
   return useMutation({
     mutationFn: async (xConnector: XConnector) => {
@@ -97,6 +101,13 @@ export function useXConnect(): UseMutationResult<XAccount | undefined, Error, XC
             });
           }
 
+          break;
+        }
+        case 'ALEO': {
+          const adapter = (xConnector as AleoXConnector).wallet;
+          selectAleoWallet(adapter.name);
+          const network = (xConnector as AleoXConnector).getXService().wallet?.network || Network.TESTNET;
+          await connectAleo(network);
           break;
         }
 
