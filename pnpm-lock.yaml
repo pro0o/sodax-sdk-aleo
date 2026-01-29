@@ -672,6 +672,15 @@ importers:
       '@mysten/wallet-standard':
         specifier: 'catalog:'
         version: 0.15.6(typescript@5.5.4)
+      '@provablehq/aleo-types':
+        specifier: 'catalog:'
+        version: 0.3.0-alpha.1
+      '@provablehq/aleo-wallet-adaptor-core':
+        specifier: 'catalog:'
+        version: 0.3.0-alpha.1
+      '@provablehq/sdk':
+        specifier: 'catalog:'
+        version: 0.9.15
       '@sodax/types':
         specifier: workspace:*
         version: link:../types

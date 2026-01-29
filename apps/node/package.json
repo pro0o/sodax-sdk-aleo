@@ -7,6 +7,7 @@
     "injective": "pnpm run build && node dist/injective.js",
     "sonic": "pnpm run build && node dist/sonic.js",
     "sui": "pnpm run build && node dist/sui.js",
+    "aleo": "pnpm run build && node dist/aleo.js",
     "moneyMarket": "pnpm run build && node dist/moneymarket.js",
     "staking": "pnpm run build && node dist/soda-staking.js",
     "stellar": "pnpm run build && node dist/stellar.js",

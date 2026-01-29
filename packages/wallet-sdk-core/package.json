@@ -61,7 +61,10 @@
     "@solana/web3.js": "catalog:",
     "@stellar/stellar-sdk": "catalog:",
     "@mysten/sui": "catalog:",
-    "@mysten/wallet-standard": "catalog:"
+    "@mysten/wallet-standard": "catalog:",
+    "@provablehq/sdk": "catalog:",
+    "@provablehq/aleo-wallet-adaptor-core": "catalog:",
+    "@provablehq/aleo-types": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
