@@ -5,11 +5,11 @@ import { useEffect } from 'react';
 import { EvmXService } from './xchains/evm';
 import { SolanaXService } from './xchains/solana/SolanaXService';
 import { SuiXService } from './xchains/sui';
-import { AleoXService } from './xchains/aleo/AleoXService';
 import { useAnchorProvider } from './xchains/solana/hooks/useAnchorProvider';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useConfig } from 'wagmi';
+import { useAleoXConnectors } from './xchains/aleo/useAleoXConnectors';
+import { reconnectAleo } from './xchains/aleo/actions';
 
 export const Hydrate = () => {
   // sui
@@ -61,12 +61,12 @@ export const Hydrate = () => {
   }, [wagmiConfig]);
 
   // aleo
-  const aleoWallet = useAleoWallet();
+  const { isLoading: aleoConnectorsLoading } = useAleoXConnectors();
   useEffect(() => {
-    if (aleoWallet) {
-      AleoXService.getInstance().wallet = aleoWallet;
+    if (!aleoConnectorsLoading) {
+      reconnectAleo();
     }
-  }, [aleoWallet]);
+  }, [aleoConnectorsLoading]);
 
   return null;
 };

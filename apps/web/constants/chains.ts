@@ -73,6 +73,7 @@ export const availableChains: ChainUI[] = [
     icon: '/chain/lightlink.png',
   },
   { id: HYPEREVM_MAINNET_CHAIN_ID, name: 'Hyper', icon: '/chain/hyper.png' },
+  { id: 'aleo', name: 'ALEO', icon: '/chain/aleo.png' },
 ];
 
 /**

@@ -8,7 +8,7 @@ import { EvmXConnector } from '../xchains/evm';
 import { SolanaXConnector } from '../xchains/solana';
 import { useStellarXConnectors } from '../xchains/stellar/useStellarXConnectors';
 import { SuiXConnector } from '../xchains/sui';
-import { useAleoXConnectors } from '../xchains/aleo';
+import { useAleoXConnectors } from '../xchains/aleo/useAleoXConnectors';
 import { useXService } from './useXService';
 
 /**

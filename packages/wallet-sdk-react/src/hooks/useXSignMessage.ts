@@ -82,11 +82,11 @@ export function useXSignMessage(): UseMutationResult<
           const aleoService = AleoXService.getInstance();
           const connector = aleoService.getXConnectorById(aleoConnection.xConnectorId) as AleoXConnector;
           
-          if (!connector) {
-            throw new Error('Aleo connector not found');
+          if (!connector || !connector.adapter.connected) {
+            throw new Error('Aleo wallet not connected');
           }
 
-          const messageBytes = typeof message === 'string' ? new TextEncoder().encode(message) : message;
+          const messageBytes = new TextEncoder().encode(message);
           signature = await connector.adapter.signMessage(messageBytes);
           break;
         }

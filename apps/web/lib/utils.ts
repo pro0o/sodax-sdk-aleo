@@ -91,13 +91,20 @@ export const getAllSupportedSolverTokens = (): XToken[] => {
   });
 };
 
-export const getSupportedSolverTokensForChain = (chainId: SpokeChainId): XToken[] => {
+export const getSupportedSolverTokensForChain = (chainId: SpokeChainId | string): XToken[] => {
   try {
-    const tokens = getSupportedSolverTokens(chainId).map(normalizeToken);
+    const rawTokens = getSupportedSolverTokens(chainId as SpokeChainId);
+
+    // Handle chains without token configuration (e.g., ALEO)
+    if (!rawTokens || !Array.isArray(rawTokens)) {
+      return [];
+    }
+
+    const tokens = rawTokens.map(normalizeToken);
 
     return tokens.map(token => ({
       ...token,
-      xChainId: chainId,
+      xChainId: chainId as SpokeChainId,
     }));
   } catch (error) {
     console.warn(`Failed to load tokens for chain ${chainId}`, error);

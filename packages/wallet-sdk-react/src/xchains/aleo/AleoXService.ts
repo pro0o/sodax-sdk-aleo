@@ -2,17 +2,15 @@ import { XService } from '@/core/XService';
 import type { XToken } from '@sodax/types';
 import { Network } from '@provablehq/aleo-types';
 import { AleoNetworkClient } from '@provablehq/sdk';
-import type { WalletContextState } from '@provablehq/aleo-wallet-adaptor-react';
 
 export class AleoXService extends XService {
   private static instance: AleoXService;
 
   public networkClient: AleoNetworkClient;
   public rpcUrl: string = 'https://api.explorer.provable.com/v1';
-  public wallet: WalletContextState | undefined;
 
   private constructor() {
-    super('ALEO' as const);
+    super('ALEO');
     this.networkClient = new AleoNetworkClient(this.rpcUrl);
   }
 
@@ -32,7 +30,7 @@ export class AleoXService extends XService {
   }
 
   async getBalance(address: string | undefined, xToken: XToken): Promise<bigint> {
-    if (!address) return BigInt(0);
+    if (!address) return 0n;
 
     try {
       if (xToken.symbol === 'ALEO' || xToken.address === 'credits.aleo') {
@@ -47,25 +45,24 @@ export class AleoXService extends XService {
           return BigInt(valueStr);
         }
 
-        return BigInt(0);
-      } else {
-        const programId = xToken.address;
-        const mapping = await this.networkClient.getProgramMappingValue(
-          programId,
-          'account',
-          address
-        );
-
-        if (mapping) {
-          const valueStr = mapping.toString().replace(/u\d+$/, '');
-          return BigInt(valueStr);
-        }
-
-        return BigInt(0);
+        return 0n;
       }
-    } catch (e) {
-      console.log('error', e);
-      return BigInt(0);
+
+      const programId = xToken.address;
+      const mapping = await this.networkClient.getProgramMappingValue(
+        programId,
+        'account',
+        address
+      );
+
+      if (mapping) {
+        const valueStr = mapping.toString().replace(/u\d+$/, '');
+        return BigInt(valueStr);
+      }
+
+      return 0n;
+    } catch {
+      return 0n;
     }
   }
 }

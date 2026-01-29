@@ -6,7 +6,7 @@ import { Network } from '@provablehq/aleo-types';
 import { AleoXService } from './AleoXService';
 
 export class AleoXConnector extends XConnector {
-  public adapter: WalletAdapter;
+  adapter: WalletAdapter;
   private defaultNetwork: Network = Network.TESTNET3;
   private defaultDecryptPermission: WalletDecryptPermission = WalletDecryptPermission.NoDecrypt;
 
@@ -20,29 +20,24 @@ export class AleoXConnector extends XConnector {
   }
 
   async connect(): Promise<XAccount | undefined> {
-    try {
-      const account = await this.adapter.connect(this.defaultNetwork, this.defaultDecryptPermission);
-      
-      if (!account?.address) {
-        return undefined;
-      }
-
-      return {
-        address: account.address,
-        xChainType: this.xChainType,
-      };
-    } catch (error) {
-      console.error('Aleo wallet connection error:', error);
+    const account = await this.adapter.connect(
+      this.defaultNetwork,
+      this.defaultDecryptPermission,
+      []
+    );
+    
+    if (!account?.address) {
       return undefined;
     }
+
+    return {
+      address: account.address,
+      xChainType: this.xChainType,
+    };
   }
 
   async disconnect(): Promise<void> {
-    try {
-      await this.adapter.disconnect();
-    } catch (error) {
-      console.error('Aleo wallet disconnection error:', error);
-    }
+    await this.adapter.disconnect();
   }
 
   public get icon() {

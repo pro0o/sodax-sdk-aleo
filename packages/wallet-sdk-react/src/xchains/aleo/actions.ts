@@ -1,10 +1,31 @@
 import { useXWagmiStore } from '@/useXWagmiStore';
+import { AleoXService } from './AleoXService';
+import type { AleoXConnector } from './AleoXConnector';
 
 export const reconnectAleo = async () => {
   const aleoConnection = useXWagmiStore.getState().xConnections.ALEO;
   if (!aleoConnection) return;
 
-  // Aleo wallets typically handle reconnection internally
-  // through their adapter's readyState and event listeners
-  // If needed, custom reconnection logic can be added here
+  const recentXConnectorId = aleoConnection.xConnectorId;
+  const aleoService = AleoXService.getInstance();
+  const connector = aleoService.getXConnectorById(recentXConnectorId) as AleoXConnector | undefined;
+
+  if (!connector) return;
+
+  const xAccount = await connector.connect();
+
+  if (xAccount?.address) {
+    useXWagmiStore.setState({
+      xConnections: {
+        ...useXWagmiStore.getState().xConnections,
+        ALEO: {
+          xAccount: {
+            address: xAccount.address,
+            xChainType: 'ALEO',
+          },
+          xConnectorId: recentXConnectorId,
+        },
+      },
+    });
+  }
 };
