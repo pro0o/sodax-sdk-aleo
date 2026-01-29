@@ -5,9 +5,11 @@ import { useSignMessage } from 'wagmi';
 import { useSignPersonalMessage } from '@mysten/dapp-kit';
 import { StellarXService } from '@/xchains/stellar';
 import { InjectiveXService } from '@/xchains/injective';
+import { AleoXService, AleoXConnector } from '@/xchains/aleo';
 import { useXAccount } from './useXAccount';
 import { getEthereumAddress } from '@injectivelabs/sdk-ts';
 import { Wallet } from '@injectivelabs/wallet-base';
+import { useXWagmiStore } from '@/useXWagmiStore';
 
 type SignMessageReturnType = `0x${string}` | Uint8Array | string | undefined;
 
@@ -68,6 +70,24 @@ export function useXSignMessage(): UseMutationResult<
             throw new Error('Injective signature not found');
           }
           signature = res;
+          break;
+        }
+
+        case 'ALEO': {
+          const aleoConnection = useXWagmiStore.getState().xConnections.ALEO;
+          if (!aleoConnection) {
+            throw new Error('Aleo wallet not connected');
+          }
+
+          const aleoService = AleoXService.getInstance();
+          const connector = aleoService.getXConnectorById(aleoConnection.xConnectorId) as AleoXConnector;
+          
+          if (!connector) {
+            throw new Error('Aleo connector not found');
+          }
+
+          const messageBytes = typeof message === 'string' ? new TextEncoder().encode(message) : message;
+          signature = await connector.adapter.signMessage(messageBytes);
           break;
         }
 

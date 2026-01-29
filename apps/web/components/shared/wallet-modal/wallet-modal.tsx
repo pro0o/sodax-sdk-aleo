@@ -64,6 +64,11 @@ export const chainGroups: ChainGroup[] = [
     chainType: 'STELLAR',
     icon: '/chain/stellar.png',
   },
+  {
+    name: 'Aleo',
+    chainType: 'ALEO',
+    icon: '/chain/aleo.png',
+  },
 ];
 
 const getChainTypeName = (chainType: ChainType): string => {

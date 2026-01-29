@@ -8,6 +8,7 @@ import type {
   STELLAR_MAINNET_CHAIN_ID,
 } from '../constants/index.js';
 import type { InjectiveNetworkEnv } from '../injective/index.js';
+import type { AleoNetworkEnv } from '../aleo/index.js';
 
 export type HubChainId = (typeof HUB_CHAIN_IDS)[number];
 
@@ -15,7 +16,7 @@ export type SpokeChainId = (typeof CHAIN_IDS)[number];
 
 export type ChainId = (typeof CHAIN_IDS)[number];
 
-export type ChainType = 'ICON' | 'EVM' | 'INJECTIVE' | 'SUI' | 'STELLAR' | 'SOLANA';
+export type ChainType = 'ICON' | 'EVM' | 'INJECTIVE' | 'SUI' | 'STELLAR' | 'SOLANA' | 'ALEO';
 
 export type Chain = {
   id: string | number;
@@ -229,6 +230,21 @@ export type IconSpokeChainConfig = BaseSpokeChainConfig<'ICON'> & {
   nid: Hex;
 };
 
+export type AleoSpokeChainConfig = BaseSpokeChainConfig<'ALEO'> & {
+  rpcUrl: string;
+  walletAddress: string;
+  addresses: {
+    assetManager: string;
+    connection: string;
+    xTokenManager: string;
+    rateLimit: string;
+    testToken: string;
+  };
+  nativeToken: string;
+  gasPrice: string;
+  network: AleoNetworkEnv;
+};
+
 export type SpokeChainConfig =
   | EvmSpokeChainConfig
   | SonicSpokeChainConfig
@@ -236,7 +252,8 @@ export type SpokeChainConfig =
   | IconSpokeChainConfig
   | SuiSpokeChainConfig
   | StellarSpokeChainConfig
-  | SolanaChainConfig;
+  | SolanaChainConfig
+  | AleoSpokeChainConfig;
 
 export type SolverConfig = {
   intentsContract: Address; // Intents Contract (Hub)

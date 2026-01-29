@@ -8,6 +8,7 @@ import { EvmXConnector } from '../xchains/evm';
 import { SolanaXConnector } from '../xchains/solana';
 import { useStellarXConnectors } from '../xchains/stellar/useStellarXConnectors';
 import { SuiXConnector } from '../xchains/sui';
+import { useAleoXConnectors } from '../xchains/aleo';
 import { useXService } from './useXService';
 
 /**
@@ -18,8 +19,9 @@ import { useXService } from './useXService';
  * - Sui: Uses Sui wallet adapters
  * - Stellar: Uses custom Stellar connectors
  * - Solana: Uses Solana wallet adapters (filtered to installed wallets only)
+ * - Aleo: Uses custom Aleo connectors
  *
- * @param xChainType - The blockchain type to get connectors for ('EVM' | 'SUI' | 'STELLAR' | 'SOLANA')
+ * @param xChainType - The blockchain type to get connectors for ('EVM' | 'SUI' | 'STELLAR' | 'SOLANA' | 'ALEO')
  * @returns An array of XConnector instances compatible with the specified chain type
  */
 
@@ -28,6 +30,7 @@ export function useXConnectors(xChainType: ChainType | undefined): XConnector[] 
   const evmConnectors = useConnectors();
   const suiWallets = useWallets();
   const { data: stellarXConnectors } = useStellarXConnectors();
+  const { data: aleoXConnectors } = useAleoXConnectors();
 
   const { wallets: solanaWallets } = useWallet();
 
@@ -47,10 +50,12 @@ export function useXConnectors(xChainType: ChainType | undefined): XConnector[] 
         return solanaWallets
           .filter(wallet => wallet.readyState === 'Installed')
           .map(wallet => new SolanaXConnector(wallet));
+      case 'ALEO':
+        return aleoXConnectors || [];
       default:
         return xService.getXConnectors();
     }
-  }, [xService, xChainType, evmConnectors, suiWallets, stellarXConnectors, solanaWallets]);
+  }, [xService, xChainType, evmConnectors, suiWallets, stellarXConnectors, solanaWallets, aleoXConnectors]);
 
   return xConnectors;
 }
