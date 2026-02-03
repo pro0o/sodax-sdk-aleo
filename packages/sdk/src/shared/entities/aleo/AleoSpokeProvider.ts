@@ -10,7 +10,7 @@ import type {
   AleoProgramId
 } from '@sodax/types';
 import { isAleoRawSpokeProvider } from '../../guards.js';
-import { AleoNetworkClient, ProgramManager } from '@provablehq/sdk';
+import { AleoNetworkClient, ProgramManager, type TransactionJSON } from '@provablehq/sdk';
 
 const ALEO_DEFAULT_RPC_URL = 'https://api.explorer.provable.com/v1';
 const ALEO_DEFAULT_TIMEOUT = 45000;
@@ -89,7 +89,7 @@ export class AleoBaseSpokeProvider {
     }
   }
 
-  async getTransactionDetails(txId: string) {
+  async getTransactionDetails(txId: string): Promise<TransactionJSON> {
     if (!AleoBaseSpokeProvider.isValidTransactionId(txId)) {
       throw new Error(`Invalid Aleo transaction ID format: ${txId}`);
     }
@@ -107,10 +107,9 @@ export class AleoBaseSpokeProvider {
     }
 
     try {
-      const transaction = await this.networkClient.getTransaction(txId);
-      
-      return transaction && transaction.id === txId;
-    } catch (error) {
+      const confirmed = await this.networkClient.getConfirmedTransaction(txId);
+      return confirmed.status === 'accepted';
+    } catch {
       return false;
     }
   }
@@ -130,8 +129,7 @@ export class AleoBaseSpokeProvider {
         totalFee: baseFee + priorityFee,
         requiresFeeRecord: !executeOptions.feeRecord,
       };
-    } catch (error) {
-      console.error(`Failed to estimate fee: ${error}`);
+    } catch {
       const baseFee = 1000000n;
       const priorityFee = BigInt(executeOptions.priorityFee ?? 0);
 
@@ -169,17 +167,6 @@ export class AleoBaseSpokeProvider {
    *   spokeProvider,
    *   false
    * );
-   * 
-   * @example
-   * // Build unsigned transaction
-   * const rawTx = await provider.transfer(
-   *   "usdc_token.aleo",
-   *   1000000n,
-   *   destinationBytes,
-   *   dataBytes,
-   *   rawSpokeProvider,
-   *   true
-   * );
    */
   async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
     token: string,
@@ -191,15 +178,17 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
+    // Input order and types must match deployed program (e.g. sodax_asset_manager_v1.aleo transfer).
+    // SDK expects inputs as string[] (Leo literals: address, program id, u128, then bytes as hex).
     const executeParams: AleoExecuteOptions = {
       programName: this.chainConfig.addresses.assetManager,
       functionName: 'transfer',
       inputs: [
-        walletAddress, // from
-        token, // token identifier
-        AleoBaseSpokeProvider.formatAmount(amount, 'u128'), // amount
-        toHex(to), // destination address as hex
-        toHex(data), // additional data as hex
+        walletAddress,
+        token,
+        AleoBaseSpokeProvider.formatAmount(amount, 'u128'),
+        toHex(to),
+        toHex(data),
       ],
     };
 
@@ -249,14 +238,15 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
+    // Input order and types must match deployed program (e.g. sodax_connection_v1.aleo send_message).
     const executeParams: AleoExecuteOptions = {
       programName: this.chainConfig.addresses.connection,
       functionName: 'send_message',
       inputs: [
-        walletAddress, // from
-        AleoBaseSpokeProvider.formatAmount(dstChainId, 'u128'), // destination chain ID
-        toHex(dstAddress), // destination address as hex
-        toHex(payload), // payload as hex
+        walletAddress,
+        AleoBaseSpokeProvider.formatAmount(dstChainId, 'u128'),
+        toHex(dstAddress),
+        toHex(payload),
       ],
     };
 
