@@ -42,6 +42,8 @@ export const STELLAR_MAINNET_CHAIN_ID = 'stellar';
 export const HYPEREVM_MAINNET_CHAIN_ID = 'hyper';
 export const LIGHTLINK_MAINNET_CHAIN_ID = 'lightlink';
 export const ETHEREUM_MAINNET_CHAIN_ID = 'ethereum';
+export const ALEO_MAINNET_CHAIN_ID = 'aleo';
+export const ALEO_TESTNET_CHAIN_ID = 'aleo-testnet';
 
 export const HUB_CHAIN_IDS = [SONIC_MAINNET_CHAIN_ID] as const;
 
@@ -62,6 +64,8 @@ export const CHAIN_IDS = [
   HYPEREVM_MAINNET_CHAIN_ID,
   LIGHTLINK_MAINNET_CHAIN_ID,
   ETHEREUM_MAINNET_CHAIN_ID,
+  ALEO_MAINNET_CHAIN_ID,
+  ALEO_TESTNET_CHAIN_ID,
 ] as const;
 
 export const EVM_CHAIN_IDS = [
@@ -168,6 +172,18 @@ export const baseChainInfo = {
     type: 'EVM',
     chainId: 1,
   },
+  [ALEO_MAINNET_CHAIN_ID]: {
+    name: 'Aleo',
+    id: ALEO_MAINNET_CHAIN_ID,
+    type: 'ALEO',
+    chainId: 'aleo',
+  },
+  [ALEO_TESTNET_CHAIN_ID]: {
+    name: 'Aleo Testnet',
+    id: ALEO_TESTNET_CHAIN_ID,
+    type: 'ALEO',
+    chainId: 'aleo-testnet',
+  },
 } as const satisfies Record<ChainId, BaseSpokeChainInfo<ChainType>>;
 
 // NOTE: This is not the same as the actual chain ids (wormhole based ids), only used for intent relay
@@ -187,6 +203,8 @@ export const ChainIdToIntentRelayChainId = {
   [HYPEREVM_MAINNET_CHAIN_ID]: 26745n,
   [LIGHTLINK_MAINNET_CHAIN_ID]: 27756n,
   [ETHEREUM_MAINNET_CHAIN_ID]: 2n,
+  [ALEO_MAINNET_CHAIN_ID]: 28n, // Placeholder - update with actual relay chain ID when available
+  [ALEO_TESTNET_CHAIN_ID]: 29n, // Placeholder - update with actual relay chain ID when available
 } as const;
 
 export const getIntentRelayChainId = (chainId: ChainId): IntentRelayChainId => ChainIdToIntentRelayChainId[chainId];
@@ -1370,6 +1388,70 @@ export const spokeChainConfig = {
       },
     } as const,
   } as const satisfies EvmSpokeChainConfig,
+  [ALEO_MAINNET_CHAIN_ID]: {
+    chain: baseChainInfo[ALEO_MAINNET_CHAIN_ID] satisfies BaseSpokeChainInfo<'ALEO'>,
+    addresses: {
+      assetManager: 'sodax_asset_manager_v1.aleo',
+      connection: 'sodax_connection_v1.aleo',
+      xTokenManager: '',
+      rateLimit: '',
+      testToken: '',
+    },
+    nativeToken: 'credits.aleo' as const,
+    bnUSD: 'bnusd_token_v1.aleo',
+    rpcUrl: 'https://api.explorer.provable.com/v1',
+    network: 'mainnet' as const,
+    gasPrice: '0',
+    walletAddress: '',
+    supportedTokens: {
+      ALEO: {
+        symbol: 'ALEO',
+        name: 'Aleo',
+        decimals: 6,
+        address: 'credits.aleo',
+        xChainId: ALEO_MAINNET_CHAIN_ID,
+      },
+      bnUSD: {
+        symbol: 'bnUSD',
+        name: 'bnUSD',
+        decimals: 6,
+        address: 'bnusd_token_v1.aleo',
+        xChainId: ALEO_MAINNET_CHAIN_ID,
+      },
+    } as const,
+  } as const,
+  [ALEO_TESTNET_CHAIN_ID]: {
+    chain: baseChainInfo[ALEO_TESTNET_CHAIN_ID] satisfies BaseSpokeChainInfo<'ALEO'>,
+    addresses: {
+      assetManager: 'sodax_asset_manager_v1_testnet.aleo',
+      connection: 'sodax_connection_v1_testnet.aleo',
+      xTokenManager: '',
+      rateLimit: '',
+      testToken: '',
+    },
+    nativeToken: 'credits.aleo' as const,
+    bnUSD: 'bnusd_token_v1_testnet.aleo',
+    rpcUrl: 'https://api.explorer.provable.com/v1/testnet',
+    network: 'testnet' as const,
+    gasPrice: '0',
+    walletAddress: '',
+    supportedTokens: {
+      ALEO: {
+        symbol: 'ALEO',
+        name: 'Aleo',
+        decimals: 6,
+        address: 'credits.aleo',
+        xChainId: ALEO_TESTNET_CHAIN_ID,
+      },
+      bnUSD: {
+        symbol: 'bnUSD',
+        name: 'bnUSD',
+        decimals: 6,
+        address: 'bnusd_token_v1_testnet.aleo',
+        xChainId: ALEO_TESTNET_CHAIN_ID,
+      },
+    } as const,
+  } as const,
 } as const satisfies SpokeChainConfigMap;
 
 export const hubAssets: Record<SpokeChainId, Record<string, HubAsset>> = {
@@ -2167,6 +2249,38 @@ export const hubAssets: Record<SpokeChainId, Record<string, HubAsset>> = {
       vault: SodaTokens.sodaWSTETH.address,
     },
   },
+  [ALEO_MAINNET_CHAIN_ID]: {
+    [spokeChainConfig[ALEO_MAINNET_CHAIN_ID].nativeToken]: {
+      asset: '0x0000000000000000000000000000000000000000', // Placeholder - update when Aleo hub token is deployed
+      decimal: 6,
+      symbol: 'ALEO',
+      name: 'Aleo',
+      vault: '0x0000000000000000000000000000000000000000', // Placeholder - update when vault is deployed
+    },
+    [spokeChainConfig[ALEO_MAINNET_CHAIN_ID].bnUSD]: {
+      asset: '0x0000000000000000000000000000000000000000', // Placeholder
+      decimal: 6,
+      symbol: 'bnUSD',
+      name: 'bnUSD',
+      vault: SodaTokens.bnUSD.address,
+    },
+  },
+  [ALEO_TESTNET_CHAIN_ID]: {
+    [spokeChainConfig[ALEO_TESTNET_CHAIN_ID].nativeToken]: {
+      asset: '0x0000000000000000000000000000000000000000', // Placeholder
+      decimal: 6,
+      symbol: 'ALEO',
+      name: 'Aleo',
+      vault: '0x0000000000000000000000000000000000000000', // Placeholder
+    },
+    [spokeChainConfig[ALEO_TESTNET_CHAIN_ID].bnUSD]: {
+      asset: '0x0000000000000000000000000000000000000000', // Placeholder
+      decimal: 6,
+      symbol: 'bnUSD',
+      name: 'bnUSD',
+      vault: SodaTokens.bnUSD.address,
+    },
+  },
 } as const;
 
 export const solverConfig = {
@@ -2294,6 +2408,12 @@ export const swapSupportedTokens = {
     spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.USDC,
     // spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.SODA,
     spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.LL,
+  ] as const satisfies XToken[],
+  [ALEO_MAINNET_CHAIN_ID]: [
+    // NOTE: Not implemented yet - waiting for contract deployment
+  ] as const satisfies XToken[],
+  [ALEO_TESTNET_CHAIN_ID]: [
+    // NOTE: Not implemented yet - waiting for contract deployment
   ] as const satisfies XToken[],
 } as const satisfies Record<SpokeChainId, readonly XToken[]>;
 
@@ -2443,6 +2563,12 @@ export const moneyMarketSupportedTokens = {
     spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.weETH,
     spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.wstETH,
     spokeChainConfig[ETHEREUM_MAINNET_CHAIN_ID].supportedTokens.USDT,
+  ] as const satisfies XToken[],
+  [ALEO_MAINNET_CHAIN_ID]: [
+    // NOTE: Not implemented yet - waiting for contract deployment
+  ] as const satisfies XToken[],
+  [ALEO_TESTNET_CHAIN_ID]: [
+    // NOTE: Not implemented yet - waiting for contract deployment
   ] as const satisfies XToken[],
 } as const satisfies Record<SpokeChainId, readonly XToken[]>;
 

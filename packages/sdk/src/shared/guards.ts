@@ -20,6 +20,7 @@ import { IconSpokeProvider, type IconRawSpokeProvider } from './entities/icon/Ic
 import { SolanaSpokeProvider, type SolanaRawSpokeProvider } from './entities/solana/SolanaSpokeProvider.js';
 import { SuiSpokeProvider, type SuiRawSpokeProvider } from './entities/sui/SuiSpokeProvider.js';
 import { StellarSpokeProvider, type StellarRawSpokeProvider } from './entities/stellar/StellarSpokeProvider.js';
+import { AleoSpokeProvider, type AleoRawSpokeProvider } from './entities/aleo/AleoSpokeProvider.js';
 import type {
   EvmSpokeProviderType,
   IconSpokeProviderType,
@@ -35,6 +36,7 @@ import type {
   SonicSpokeProviderType,
   StellarSpokeProviderType,
   SuiSpokeProviderType,
+  AleoSpokeProviderType,
 } from './types.js';
 import type { EvmHubChainConfig, HubChainConfig } from '@sodax/types';
 import type { IntentError } from '../swap/SwapService.js';
@@ -238,6 +240,20 @@ export function isSuiSpokeProvider(value: SpokeProviderType): value is SuiSpokeP
     value instanceof SuiSpokeProvider &&
     !('raw' in value) &&
     value.chainConfig.chain.type === 'SUI'
+  );
+}
+
+export function isAleoSpokeProviderType(value: SpokeProviderType): value is AleoSpokeProviderType {
+  return typeof value === 'object' && value !== null && (isAleoSpokeProvider(value) || isAleoRawSpokeProvider(value));
+}
+
+export function isAleoSpokeProvider(value: SpokeProviderType): value is AleoSpokeProvider {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    value instanceof AleoSpokeProvider &&
+    !('raw' in value) &&
+    value.chainConfig.chain.type === 'ALEO'
   );
 }
 
@@ -461,4 +477,8 @@ export function isSonicRawSpokeProvider(value: unknown): value is SonicRawSpokeP
     value.chainConfig.chain.type === 'EVM' &&
     value.chainConfig.chain.id === SONIC_MAINNET_CHAIN_ID
   );
+}
+
+export function isAleoRawSpokeProvider(value: unknown): value is AleoRawSpokeProvider {
+  return isRawSpokeProvider(value) && value.chainConfig.chain.type === 'ALEO';
 }

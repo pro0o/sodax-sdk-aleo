@@ -17,6 +17,8 @@ import type {
   StellarSpokeProvider,
   SuiRawSpokeProvider,
   SuiSpokeProvider,
+  AleoRawSpokeProvider,
+  AleoSpokeProvider,
 } from './entities/index.js';
 import type { bnUSDLegacySpokeChainIds, bnUSDLegacyTokens, newbnUSDSpokeChainIds } from './constants.js';
 import type { EvmSpokeDepositParams, SonicSpokeDepositParams } from './services/index.js';
@@ -46,6 +48,8 @@ import type {
   SuiSpokeChainConfig,
   SolanaChainConfig,
   BaseSpokeChainConfig,
+  AleoSpokeChainConfig,
+  AleoRawTransaction,
 } from '@sodax/types';
 import type { InjectiveSpokeDepositParams } from './services/spoke/InjectiveSpokeService.js';
 
@@ -207,7 +211,11 @@ export type GetSpokeDepositParamsType<T extends SpokeProviderType> = T extends E
                           ? SonicSpokeDepositParams
                           : T extends SonicRawSpokeProvider
                             ? SonicSpokeDepositParams
-                            : never;
+                            : T extends AleoSpokeProvider
+                              ? never // TODO: Define AleoSpokeDepositParams when needed
+                              : T extends AleoRawSpokeProvider
+                                ? never // TODO: Define AleoSpokeDepositParams when needed
+                                : never;
 
 export type GetAddressType<T extends SpokeProviderType> = T extends EvmSpokeProvider
   ? Address
@@ -237,7 +245,11 @@ export type GetAddressType<T extends SpokeProviderType> = T extends EvmSpokeProv
                           ? Address
                           : T extends SonicRawSpokeProvider
                             ? Address
-                            : never;
+                            : T extends AleoSpokeProvider
+                              ? string // Aleo addresses are strings (aleo1...)
+                              : T extends AleoRawSpokeProvider
+                                ? string // Aleo addresses are strings (aleo1...)
+                                : never;
 
 export type SolverConfigParams =
   | Prettify<SolverConfig & Optional<PartnerFeeConfig, 'partnerFee'>>
@@ -355,6 +367,7 @@ export type StellarReturnType<Raw extends boolean> = Raw extends true ? StellarR
 export type IconReturnType<Raw extends boolean> = Raw extends true ? IconRawTransaction : Hex;
 export type SuiReturnType<Raw extends boolean> = Raw extends true ? SuiRawTransaction : string;
 export type InjectiveReturnType<Raw extends boolean> = Raw extends true ? InjectiveRawTransaction : string;
+export type AleoReturnType<Raw extends boolean> = Raw extends true ? AleoRawTransaction : string;
 
 export type HashTxReturnType =
   | EvmReturnType<false>
@@ -362,7 +375,8 @@ export type HashTxReturnType =
   | IconReturnType<false>
   | SuiReturnType<false>
   | InjectiveReturnType<false>
-  | StellarReturnType<false>;
+  | StellarReturnType<false>
+  | AleoReturnType<false>;
 
 export type RawTxReturnType =
   | EvmRawTransaction
@@ -370,7 +384,8 @@ export type RawTxReturnType =
   | InjectiveRawTransaction
   | IconRawTransaction
   | SuiRawTransaction
-  | StellarRawTransaction;
+  | StellarRawTransaction
+  | AleoRawTransaction;
 
 /**
  * Return type for a transaction based on the given SpokeProvider or RawSpokeProvider.
@@ -390,7 +405,9 @@ export type TxReturnType<T extends SpokeProviderType, Raw extends boolean> = T e
             ? SuiReturnType<true>
             : T['chainConfig']['chain']['type'] extends 'INJECTIVE'
               ? InjectiveReturnType<true>
-              : RawTxReturnType
+              : T['chainConfig']['chain']['type'] extends 'ALEO'
+                ? AleoReturnType<true>
+                : RawTxReturnType
   : T extends SpokeProvider
     ? T['chainConfig']['chain']['type'] extends 'EVM'
       ? EvmReturnType<Raw>
@@ -404,9 +421,11 @@ export type TxReturnType<T extends SpokeProviderType, Raw extends boolean> = T e
               ? SuiReturnType<Raw>
               : T['chainConfig']['chain']['type'] extends 'INJECTIVE'
                 ? InjectiveReturnType<Raw>
-                : Raw extends true
-                  ? RawTxReturnType
-                  : HashTxReturnType
+                : T['chainConfig']['chain']['type'] extends 'ALEO'
+                  ? AleoReturnType<Raw>
+                  : Raw extends true
+                    ? RawTxReturnType
+                    : HashTxReturnType
     : Raw extends true
       ? RawTxReturnType
       : HashTxReturnType;
@@ -444,6 +463,7 @@ export type IconSpokeProviderType = IconSpokeProvider | IconRawSpokeProvider;
 export type SuiSpokeProviderType = SuiSpokeProvider | SuiRawSpokeProvider;
 export type InjectiveSpokeProviderType = InjectiveSpokeProvider | InjectiveRawSpokeProvider;
 export type SonicSpokeProviderType = SonicSpokeProvider | SonicRawSpokeProvider;
+export type AleoSpokeProviderType = AleoSpokeProvider | AleoRawSpokeProvider;
 
 export type Prettify<T> = {
   [K in keyof T]: T[K];
@@ -474,13 +494,21 @@ export type InjectiveGasEstimate = {
   gasUsed: number;
 };
 
+export type AleoGasEstimate = {
+  baseFee: bigint;
+  priorityFee: bigint;
+  totalFee: bigint;
+  requiresFeeRecord: boolean;
+};
+
 export type GasEstimateType =
   | EvmGasEstimate
   | SolanaGasEstimate
   | StellarGasEstimate
   | IconGasEstimate
   | SuiGasEstimate
-  | InjectiveGasEstimate;
+  | InjectiveGasEstimate
+  | AleoGasEstimate;
 
 export type GetEstimateGasReturnType<T extends SpokeProviderType> = T['chainConfig']['chain']['type'] extends 'EVM'
   ? EvmGasEstimate
@@ -494,7 +522,9 @@ export type GetEstimateGasReturnType<T extends SpokeProviderType> = T['chainConf
           ? SuiGasEstimate
           : T['chainConfig']['chain']['type'] extends 'INJECTIVE'
             ? InjectiveGasEstimate
-            : GasEstimateType; // default to all gas estimate types union type
+            : T['chainConfig']['chain']['type'] extends 'ALEO'
+              ? AleoGasEstimate
+              : GasEstimateType; // default to all gas estimate types union type
 
 export type OptionalRaw<R extends boolean = false> = { raw?: R };
 export type OptionalTimeout = { timeout?: number };
@@ -513,4 +543,6 @@ export type GetChainConfigType<T extends ChainType> = T extends 'EVM'
           ? SuiSpokeChainConfig
           : T extends 'INJECTIVE'
             ? InjectiveSpokeChainConfig
-            : BaseSpokeChainConfig<T>;
+            : T extends 'ALEO'
+              ? AleoSpokeChainConfig
+              : BaseSpokeChainConfig<T>;

@@ -1,10 +1,11 @@
 import type { WalletAddressProvider } from '../common/index.js';
 
-export type AleoNetworkEnv = 'mainnet' | 'testnet';
+export type AleoEoaAddress = `aleo1${string}`;
+export type AleoTransactionId = `at1${string}`;
+export type AleoProgramId = `${string}.aleo`;
 
+export type AleoNetworkEnv = 'mainnet' | 'testnet';
 export type AleoTransactionStatus = 'accepted' | 'rejected';
-export type AleoTransactionJSON = unknown;
-export type AleoFinalizeOutput = unknown;
 
 export interface AleoRecordPlaintext {
   microcredits(): bigint;
@@ -45,8 +46,8 @@ export interface AleoTransactionReceipt {
   status: AleoTransactionStatus;
   type: string;
   index: bigint;
-  transaction: AleoTransactionJSON;
-  finalize: AleoFinalizeOutput[];
+  transaction: unknown;
+  finalize: unknown[];
   confirmedAt: Date;
 }
 
@@ -55,44 +56,22 @@ export interface AleoWaitForReceiptOptions {
   timeout?: number;
 }
 
+export type AleoRawTransaction = {
+  from: string;
+  to: AleoProgramId;
+  value: bigint;
+  data: AleoExecuteOptions;
+};
+
 export interface IAleoWalletProvider extends WalletAddressProvider {
-  /**
-   * Get the wallet's Aleo address.
-   * 
-   * @returns The wallet address string
-   */
-  getWalletAddress(): Promise<string>;
-
-  /**
-   * Execute an Aleo program function.
-   * 
-   * @param options - Execution options
-   * @returns The execution result containing the transaction ID
-   */
-  execute(options: AleoExecuteOptions): Promise<AleoExecutionResult>;
-
-  /**
-   * Wait for a transaction to be confirmed on the Aleo network.
-   * 
-   * @param transactionId - The transaction ID to wait for
-   * @param options - Polling configuration options
-   * @returns The transaction receipt
-   * @throws If the transaction is rejected, times out, or the ID is invalid
-   */
-  waitForTransactionReceipt(
+  getWalletAddress: () => Promise<string>;
+  execute: (options: AleoExecuteOptions) => Promise<AleoExecutionResult>;
+  waitForTransactionReceipt: (
     transactionId: string,
     options?: AleoWaitForReceiptOptions
-  ): Promise<AleoTransactionReceipt>;
-
-  /**
-   * Execute a function and wait for the transaction to be confirmed.
-   * 
-   * @param options - Execution options
-   * @param receiptOptions - Receipt polling options
-   * @returns Both the execution result and the transaction receipt
-   */
-  executeAndWait(
+  ) => Promise<AleoTransactionReceipt>;
+  executeAndWait: (
     options: AleoExecuteOptions,
     receiptOptions?: AleoWaitForReceiptOptions
-  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }>;
+  ) => Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }>;
 }
