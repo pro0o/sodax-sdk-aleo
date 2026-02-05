@@ -6,6 +6,7 @@ import type {
   ISolanaWalletProvider,
   IStellarWalletProvider,
   ISuiWalletProvider,
+  IAleoWalletProvider,
 } from '@sodax/types';
 import { useMemo } from 'react';
 import {
@@ -15,6 +16,7 @@ import {
   InjectiveWalletProvider,
   StellarWalletProvider,
   SolanaWalletProvider,
+  AleoWalletProvider,
 } from '@sodax/wallet-sdk-core';
 import { getXChainType } from '../actions';
 import { usePublicClient, useWalletClient } from 'wagmi';
@@ -22,6 +24,9 @@ import { type SolanaXService, type StellarXService, useXAccount, useXService } f
 import type { SuiXService } from '../xchains/sui/SuiXService';
 import { CHAIN_INFO, SupportedChainId } from '../xchains/icon/IconXService';
 import type { InjectiveXService } from '../xchains/injective/InjectiveXService';
+import type { AleoXService } from '../xchains/aleo/AleoXService';
+import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import type { BaseAleoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-core';
 
 /**
  * Hook to get the appropriate wallet provider based on the chain type.
@@ -49,6 +54,7 @@ export function useWalletProvider(
   | IInjectiveWalletProvider
   | IStellarWalletProvider
   | ISolanaWalletProvider
+  | IAleoWalletProvider
   | undefined {
   const xChainType = getXChainType(spokeChainId);
   // EVM-specific hooks
@@ -59,6 +65,7 @@ export function useWalletProvider(
   // Cross-chain hooks
   const xService = useXService(getXChainType(spokeChainId));
   const xAccount = useXAccount(spokeChainId);
+  const aleoWallet = useAleoWallet();
 
   return useMemo(() => {
     switch (xChainType) {
@@ -141,8 +148,26 @@ export function useWalletProvider(
         });
       }
 
+      case 'ALEO': {
+        const aleoXService = xService as AleoXService;
+
+        if (!aleoXService) {
+          return undefined;
+        }
+
+        if (!aleoWallet.wallet?.adapter) {
+          return undefined;
+        }
+
+        return new AleoWalletProvider({
+          type: 'browserExtension',
+          rpcUrl: aleoXService.rpcUrl,
+          provableAdapter: aleoWallet.wallet.adapter as BaseAleoWalletAdapter,
+        });
+      }
+
       default:
         return undefined;
     }
-  }, [xChainType, evmPublicClient, evmWalletClient, xService, xAccount]);
+  }, [xChainType, evmPublicClient, evmWalletClient, xService, xAccount, aleoWallet]);
 }

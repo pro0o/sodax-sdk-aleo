@@ -29,7 +29,8 @@ const initXServices = () => {
     const xChainType = key as ChainType;
 
     switch (xChainType) {
-      // EVM, SUI, Solana wallet connectors are supported by their own sdks. wagmi, @mysten/dapp-kit, @solana/wallet-adapter-react.
+      // EVM, SUI, Solana, Aleo wallet connectors are supported by their own provider contexts.
+      // wagmi, @mysten/dapp-kit, @solana/wallet-adapter-react, @provablehq/aleo-wallet-adaptor-react
       case 'EVM':
         xServices[xChainType] = EvmXService.getInstance();
         xServices[xChainType].setXConnectors([]);
@@ -42,8 +43,12 @@ const initXServices = () => {
         xServices[xChainType] = SolanaXService.getInstance();
         xServices[xChainType].setXConnectors([]);
         break;
+      case 'ALEO':
+        xServices[xChainType] = AleoXService.getInstance();
+        xServices[xChainType].setXConnectors([]);
+        break;
 
-      // Injective, Stellar, Icon wallet connectors are supported by sodax wallet-sdk-react sdk.
+      // Injective, Stellar, Icon wallet connectors are managed by sodax wallet-sdk-react.
       case 'INJECTIVE':
         xServices[xChainType] = InjectiveXService.getInstance();
         xServices[xChainType].setXConnectors([new InjectiveMetamaskXConnector(), new InjectiveKelprXConnector()]);
@@ -55,10 +60,6 @@ const initXServices = () => {
       case 'ICON':
         xServices[xChainType] = IconXService.getInstance();
         xServices[xChainType].setXConnectors([new IconHanaXConnector()]);
-        break;
-      case 'ALEO':
-        xServices[xChainType] = AleoXService.getInstance();
-        xServices[xChainType].setXConnectors([]);
         break;
       default:
         break;

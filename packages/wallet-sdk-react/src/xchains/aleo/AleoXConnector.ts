@@ -1,18 +1,14 @@
 import type { XAccount } from '@/types';
 import { XConnector } from '@/core';
-import type { WalletAdapter } from '@provablehq/aleo-wallet-standard';
-import { WalletDecryptPermission } from '@provablehq/aleo-wallet-standard';
-import { Network } from '@provablehq/aleo-types';
+import type { Wallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { AleoXService } from './AleoXService';
 
 export class AleoXConnector extends XConnector {
-  adapter: WalletAdapter;
-  private defaultNetwork: Network = Network.TESTNET3;
-  private defaultDecryptPermission: WalletDecryptPermission = WalletDecryptPermission.NoDecrypt;
+  wallet: Wallet;
 
-  constructor(adapter: WalletAdapter) {
-    super('ALEO', adapter.name, adapter.name);
-    this.adapter = adapter;
+  constructor(wallet: Wallet) {
+    super('ALEO', wallet.adapter.name, wallet.adapter.name);
+    this.wallet = wallet;
   }
 
   getXService(): AleoXService {
@@ -20,27 +16,17 @@ export class AleoXConnector extends XConnector {
   }
 
   async connect(): Promise<XAccount | undefined> {
-    const account = await this.adapter.connect(
-      this.defaultNetwork,
-      this.defaultDecryptPermission,
-      []
-    );
-    
-    if (!account?.address) {
-      return undefined;
-    }
-
-    return {
-      address: account.address,
-      xChainType: this.xChainType,
-    };
+    return;
   }
 
-  async disconnect(): Promise<void> {
-    await this.adapter.disconnect();
-  }
+  async disconnect(): Promise<void> {}
 
   public get icon() {
-    return this.adapter.icon;
+    return this.wallet.adapter.icon;
+  }
+
+  // Get the wallet's installation URL
+  public get url() {
+    return this.wallet.adapter.url;
   }
 }

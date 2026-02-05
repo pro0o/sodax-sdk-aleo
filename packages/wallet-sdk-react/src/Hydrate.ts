@@ -8,8 +8,6 @@ import { SuiXService } from './xchains/sui';
 import { useAnchorProvider } from './xchains/solana/hooks/useAnchorProvider';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useConfig } from 'wagmi';
-import { useAleoXConnectors } from './xchains/aleo/useAleoXConnectors';
-import { reconnectAleo } from './xchains/aleo/actions';
 
 export const Hydrate = () => {
   // sui
@@ -59,14 +57,6 @@ export const Hydrate = () => {
       EvmXService.getInstance().wagmiConfig = wagmiConfig;
     }
   }, [wagmiConfig]);
-
-  // aleo
-  const { isLoading: aleoConnectorsLoading } = useAleoXConnectors();
-  useEffect(() => {
-    if (!aleoConnectorsLoading) {
-      reconnectAleo();
-    }
-  }, [aleoConnectorsLoading]);
 
   return null;
 };

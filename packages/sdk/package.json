@@ -52,6 +52,7 @@
     "@injectivelabs/networks": "catalog:",
     "@injectivelabs/sdk-ts": "catalog:",
     "@mysten/sui": "catalog:",
+    "@provablehq/sdk": "catalog:",
     "@sodax/types": "workspace:*",
     "@solana/spl-token": "catalog:",
     "@solana/web3.js": "catalog:",

@@ -1,15 +1,14 @@
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import type { ChainType } from '@sodax/types';
 import { useSignMessage } from 'wagmi';
 import { useSignPersonalMessage } from '@mysten/dapp-kit';
 import { StellarXService } from '@/xchains/stellar';
 import { InjectiveXService } from '@/xchains/injective';
-import { AleoXService, AleoXConnector } from '@/xchains/aleo';
 import { useXAccount } from './useXAccount';
 import { getEthereumAddress } from '@injectivelabs/sdk-ts';
 import { Wallet } from '@injectivelabs/wallet-base';
-import { useXWagmiStore } from '@/useXWagmiStore';
 
 type SignMessageReturnType = `0x${string}` | Uint8Array | string | undefined;
 
@@ -25,6 +24,7 @@ export function useXSignMessage(): UseMutationResult<
   const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
 
   const { address: injectiveAddress } = useXAccount('INJECTIVE');
+  const { signMessage: aleoSignMessage } = useAleoWallet();
 
   return useMutation({
     mutationFn: async ({ xChainType, message }: { xChainType: ChainType; message: string }) => {
@@ -74,20 +74,12 @@ export function useXSignMessage(): UseMutationResult<
         }
 
         case 'ALEO': {
-          const aleoConnection = useXWagmiStore.getState().xConnections.ALEO;
-          if (!aleoConnection) {
-            throw new Error('Aleo wallet not connected');
-          }
-
-          const aleoService = AleoXService.getInstance();
-          const connector = aleoService.getXConnectorById(aleoConnection.xConnectorId) as AleoXConnector;
-          
-          if (!connector || !connector.adapter.connected) {
+          if (!aleoSignMessage) {
             throw new Error('Aleo wallet not connected');
           }
 
           const messageBytes = new TextEncoder().encode(message);
-          signature = await connector.adapter.signMessage(messageBytes);
+          signature = await aleoSignMessage(messageBytes);
           break;
         }
 

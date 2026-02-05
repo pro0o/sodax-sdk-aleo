@@ -7,7 +7,7 @@ export class AleoXService extends XService {
   private static instance: AleoXService;
 
   public networkClient: AleoNetworkClient;
-  public rpcUrl: string = 'https://api.explorer.provable.com/v1';
+  public rpcUrl = 'https://api.explorer.provable.com/v1';
 
   private constructor() {
     super('ALEO');

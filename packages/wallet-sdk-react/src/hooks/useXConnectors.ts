@@ -1,6 +1,7 @@
 import type { ChainType } from '@sodax/types';
 import { useWallets } from '@mysten/dapp-kit';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet as useAleoWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useMemo } from 'react';
 import { useConnectors } from 'wagmi';
 import type { XConnector } from '../core';
@@ -8,7 +9,7 @@ import { EvmXConnector } from '../xchains/evm';
 import { SolanaXConnector } from '../xchains/solana';
 import { useStellarXConnectors } from '../xchains/stellar/useStellarXConnectors';
 import { SuiXConnector } from '../xchains/sui';
-import { useAleoXConnectors } from '../xchains/aleo/useAleoXConnectors';
+import { AleoXConnector } from '../xchains/aleo';
 import { useXService } from './useXService';
 
 /**
@@ -19,7 +20,7 @@ import { useXService } from './useXService';
  * - Sui: Uses Sui wallet adapters
  * - Stellar: Uses custom Stellar connectors
  * - Solana: Uses Solana wallet adapters (filtered to installed wallets only)
- * - Aleo: Uses custom Aleo connectors
+ * - Aleo: Uses Aleo wallet adapters (filtered to installed/loadable wallets only)
  *
  * @param xChainType - The blockchain type to get connectors for ('EVM' | 'SUI' | 'STELLAR' | 'SOLANA' | 'ALEO')
  * @returns An array of XConnector instances compatible with the specified chain type
@@ -30,7 +31,7 @@ export function useXConnectors(xChainType: ChainType | undefined): XConnector[] 
   const evmConnectors = useConnectors();
   const suiWallets = useWallets();
   const { data: stellarXConnectors } = useStellarXConnectors();
-  const { data: aleoXConnectors } = useAleoXConnectors();
+  const { wallets: aleoWallets } = useAleoWallet();
 
   const { wallets: solanaWallets } = useWallet();
 
@@ -51,11 +52,13 @@ export function useXConnectors(xChainType: ChainType | undefined): XConnector[] 
           .filter(wallet => wallet.readyState === 'Installed')
           .map(wallet => new SolanaXConnector(wallet));
       case 'ALEO':
-        return aleoXConnectors || [];
+        return aleoWallets
+          .filter(wallet => wallet.readyState === 'Installed' || wallet.readyState === 'Loadable')
+          .map(wallet => new AleoXConnector(wallet));
       default:
         return xService.getXConnectors();
     }
-  }, [xService, xChainType, evmConnectors, suiWallets, stellarXConnectors, solanaWallets, aleoXConnectors]);
+  }, [xService, xChainType, evmConnectors, suiWallets, stellarXConnectors, solanaWallets, aleoWallets]);
 
   return xConnectors;
 }

@@ -17,6 +17,16 @@ import {
 } from '@solana/wallet-adapter-react';
 import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
 
+// aleo
+import { AleoWalletProvider } from '@provablehq/aleo-wallet-adaptor-react';
+import { LeoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-leo';
+import { FoxWalletAdapter } from '@provablehq/aleo-wallet-adaptor-fox';
+import { PuzzleWalletAdapter } from '@provablehq/aleo-wallet-adaptor-puzzle';
+import { ShieldWalletAdapter } from '@provablehq/aleo-wallet-adaptor-shield';
+import { SoterWalletAdapter } from '@provablehq/aleo-wallet-adaptor-soter';
+import { DecryptPermission } from '@provablehq/aleo-wallet-adaptor-core';
+import { Network } from '@provablehq/aleo-types';
+
 import type { RpcConfig } from '@sodax/types';
 
 import { Hydrate } from './Hydrate';
@@ -32,14 +42,33 @@ export const SodaxWalletProvider = ({ children, rpcConfig }: { children: React.R
 
   const solanaWallets = useMemo(() => [new UnsafeBurnerWalletAdapter()], []);
 
+  const aleoWallets = useMemo(
+    () => [
+      new LeoWalletAdapter(),
+      new FoxWalletAdapter(),
+      new PuzzleWalletAdapter(),
+      new ShieldWalletAdapter(),
+      new SoterWalletAdapter(),
+    ],
+    [],
+  );
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <SuiClientProvider networks={{ mainnet: { url: getFullnodeUrl('mainnet') } }} defaultNetwork="mainnet">
         <SuiWalletProvider autoConnect={true}>
           <SolanaConnectionProvider endpoint={rpcConfig['solana'] ?? ''}>
             <SolanaWalletProvider wallets={solanaWallets} autoConnect>
-              <Hydrate />
-              {children}
+              <AleoWalletProvider
+                wallets={aleoWallets}
+                autoConnect={true}
+                network={Network.TESTNET3}
+                decryptPermission={DecryptPermission.NoDecrypt}
+                programs={[]}
+              >
+                <Hydrate />
+                {children}
+              </AleoWalletProvider>
             </SolanaWalletProvider>
           </SolanaConnectionProvider>
         </SuiWalletProvider>
