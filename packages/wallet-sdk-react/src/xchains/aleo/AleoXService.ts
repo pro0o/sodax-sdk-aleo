@@ -8,6 +8,7 @@ export class AleoXService extends XService {
 
   public networkClient: AleoNetworkClient;
   public rpcUrl = 'https://api.explorer.provable.com/v1';
+  public currentNetwork: Network = Network.TESTNET3;
 
   private constructor() {
     super('ALEO');
@@ -22,11 +23,16 @@ export class AleoXService extends XService {
   }
 
   public setNetworkClient(network: Network): void {
+    this.currentNetwork = network;
     this.rpcUrl = network === Network.MAINNET 
       ? 'https://api.explorer.aleo.org/v1'
       : 'https://api.explorer.provable.com/v1';
     
     this.networkClient = new AleoNetworkClient(this.rpcUrl);
+  }
+
+  public getCurrentNetwork(): Network {
+    return this.currentNetwork;
   }
 
   async getBalance(address: string | undefined, xToken: XToken): Promise<bigint> {
