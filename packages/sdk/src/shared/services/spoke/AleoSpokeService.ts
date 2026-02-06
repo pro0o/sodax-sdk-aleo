@@ -14,19 +14,23 @@ import { EvmWalletAbstraction } from '../hub/index.js';
 import { encodeAddress } from '../../utils/shared-utils.js';
 import { isAleoRawSpokeProvider } from '../../guards.js';
 
-export type AleoTransferToHubParams = {
-  token: bigint;
-  recipient: Address;
-  amount: bigint;
-  data: Hex;
-};
-
 export type AleoSpokeDepositParams = {
   from: string; // Aleo address (aleo1...)
   to?: HubAddress; // The address of the user on the hub chain (wallet abstraction address)
   token: bigint; // Token ID as field
   amount: bigint; // Amount to transfer
   data: Hex; // Data payload
+  connSn?: bigint; // Connection sequence number (randomly generated if not provided)
+  feeAmount?: bigint; // Fee amount for cross-chain transfer (defaults to 0)
+};
+
+export type AleoTransferToHubParams = {
+  token: bigint;
+  recipient: Address;
+  amount: bigint;
+  data: Hex;
+  connSn: bigint;
+  feeAmount: bigint;
 };
 
 export class AleoSpokeService {
@@ -68,12 +72,16 @@ export class AleoSpokeService {
         hubProvider,
       ));
 
+    const connSn = params.connSn ?? AleoSpokeService.generateConnSn();
+
     return AleoSpokeService.transfer(
       {
         token: params.token,
         recipient: userWallet,
         amount: params.amount,
         data: keccak256(params.data),
+        connSn,
+        feeAmount: params.feeAmount ?? 0n,
       },
       spokeProvider,
       hubProvider,
@@ -89,8 +97,8 @@ export class AleoSpokeService {
    */
   public static async getDeposit(token: string, spokeProvider: AleoSpokeProviderType): Promise<bigint> {
     const baseProvider = new AleoBaseSpokeProvider(spokeProvider.chainConfig);
-    const assetManagerAddress = spokeProvider.chainConfig.addresses.assetManager;
-    return baseProvider.getBalance(assetManagerAddress, token);
+    const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
+    return baseProvider.getBalance(walletAddress, token);
   }
 
   /**
@@ -128,7 +136,7 @@ export class AleoSpokeService {
   }
 
   /**
-   * Calls a contract on the spoke chain using the user's wallet.
+   * Calls the connection contract on the spoke chain to send a message to the hub wallet.
    * @param from - The address of the user on the hub chain.
    * @param payload - The payload to send to the contract.
    * @param spokeProvider - The spoke provider.
@@ -144,45 +152,33 @@ export class AleoSpokeService {
     raw?: R,
   ): Promise<TxReturnType<S, R>> {
     const relayId = getIntentRelayChainId(hubProvider.chainConfig.chain.id);
-    return AleoSpokeService.call(BigInt(relayId), from, keccak256(payload), spokeProvider, raw);
+    const connSn = AleoSpokeService.generateConnSn();
+    return AleoSpokeService.call(BigInt(relayId), from, keccak256(payload), connSn, spokeProvider, raw);
   }
 
   /**
    * Transfer tokens from Aleo spoke to hub chain via asset_manager.aleo.
-   * @param params - Transfer parameters.
-   * @param spokeProvider - The Aleo spoke provider.
-   * @param hubProvider - The EVM hub provider.
-   * @param raw - Whether to return raw transaction data.
-   * @returns The transaction ID or raw transaction.
+   *
+   * Note: Aleo transitions cannot access on-chain mappings, so conn_sn,
+   * fee_amount, hub_chain_id, and hub_address must all be passed as inputs.
    */
   private static async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
-    { token, recipient, amount, data }: AleoTransferToHubParams,
+    { token, recipient, amount, data, connSn, feeAmount }: AleoTransferToHubParams,
     spokeProvider: S,
     hubProvider: EvmHubProvider,
     raw?: R,
   ): Promise<TxReturnType<S, R>> {
     const baseProvider = new AleoBaseSpokeProvider(spokeProvider.chainConfig);
 
-    // Get the connection sequence number (this would typically come from on-chain state)
-    // For now, using a placeholder - in production this should be fetched from the connection contract
-    const connSn = 0n; //! Randomize
-
-    // Convert data hex to field (using first 32 bytes or padding)
-    const dataField = BigInt(data.slice(0, 66)); // 0x + 64 hex chars = 32 bytes
-
-    // Fee amount for cross-chain transfer (configurable)
-    const feeAmount = 0n;
-
-    // Hub chain configuration
     const hubChainId = BigInt(hubProvider.chainConfig.chain.id);
-    const hubAddress = hubProvider.chainConfig.addresses.assetManager;
+    const hubAddress = hubProvider.chainConfig.addresses.assetManager as Hex;
 
     return baseProvider.transfer(
       token,
       recipient,
       amount,
       connSn,
-      dataField,
+      data,
       feeAmount,
       hubChainId,
       hubAddress,
@@ -193,26 +189,27 @@ export class AleoSpokeService {
 
   /**
    * Sends a message to the hub chain via connection.aleo.
-   * @param dstChainId - The destination chain ID.
-   * @param dstAddress - The destination address on the hub chain.
-   * @param payload - The message payload.
-   * @param spokeProvider - The Aleo spoke provider.
-   * @param raw - Whether to return raw transaction data.
-   * @returns The transaction ID or raw transaction.
    */
   private static async call<S extends AleoSpokeProviderType, R extends boolean = false>(
     dstChainId: bigint,
     dstAddress: HubAddress,
     payload: Hex,
+    connSn: bigint,
     spokeProvider: S,
     raw?: R,
   ): Promise<TxReturnType<S, R>> {
     const baseProvider = new AleoBaseSpokeProvider(spokeProvider.chainConfig);
-
-    // Get the connection sequence number
-    const connSn = 0n;
-
     return baseProvider.sendMessage(dstChainId, dstAddress, connSn, payload, spokeProvider, raw);
+  }
+
+  /**
+   * Generate a random connection sequence number (conn_sn).
+   * Aleo transitions can't read on-chain mappings, so conn_sn is generated as a random nonce.
+   *
+   * @returns A random connection sequence number.
+   */
+  public static generateConnSn(): bigint {
+    return BigInt(Math.floor(Math.random() * 98488343));
   }
 
   /**

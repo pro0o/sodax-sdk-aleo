@@ -1431,7 +1431,7 @@ export const spokeChainConfig = {
     },
     nativeToken: 'credits.aleo' as const,
     bnUSD: 'bnusd_token_v1_testnet.aleo',
-    rpcUrl: 'https://api.explorer.provable.com/v2/testnet',
+    rpcUrl: 'https://api.provable.com/v2/testnet/',
     network: 'testnet' as const,
     gasPrice: '0',
     walletAddress: '',

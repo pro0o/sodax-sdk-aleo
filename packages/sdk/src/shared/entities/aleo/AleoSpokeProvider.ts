@@ -11,12 +11,13 @@ import type {
 } from '@sodax/types';
 
 import { isAleoRawSpokeProvider } from '../../guards.js';
-import { AleoNetworkClient, ProgramManager, type TransactionJSON } from '@provablehq/sdk';
+import { AleoNetworkClient, ProgramManager } from '@provablehq/sdk';
 
 const ALEO_DEFAULT_RPC_URL = 'https://api.explorer.provable.com/v2';
 const ALEO_DEFAULT_TIMEOUT = 45000;
 const ALEO_DEFAULT_CHECK_INTERVAL = 2000;
-// RPC activities , query balances, block heights, verifying transactions.
+
+// RPC activities, query balances, block heights, verifying transactions.
 export class AleoBaseSpokeProvider {
   public readonly chainConfig: AleoSpokeChainConfig;
   public readonly rpcUrl: string;
@@ -53,27 +54,24 @@ export class AleoBaseSpokeProvider {
   }
 
   /**
-   * Convert a hex address (e.g., EVM 0x...) to a Leo [u8; 32] array literal.
-   * Left-pads shorter addresses to 32 bytes.
-   * Used for cross-chain address encoding in Aleo programs.
+   * Convert a hex string to a Leo [u8; 32] array literal.
+   * Left-pads shorter inputs to 32 bytes.
+   * Used for cross-chain address/data encoding in Aleo programs.
    *
-   * @param address - Hex string (with or without 0x prefix)
+   * @param hex - Hex string (with or without 0x prefix)
    * @returns Leo array literal string, e.g., "[0u8, 0u8, ..., 171u8, 205u8]"
    */
-  static hexToAleoU8Array(address: string): string {
-    // Normalize address
-    let hex = address.trim().toLowerCase();
-    if (hex.startsWith('0x')) hex = hex.slice(2);
-    if (hex.length % 2 === 1) hex = `0${hex}`;
+  static hexToAleoU8Array(hex: string): string {
+    let normalized = hex.trim().toLowerCase();
+    if (normalized.startsWith('0x')) normalized = normalized.slice(2);
+    if (normalized.length % 2 === 1) normalized = `0${normalized}`;
 
-    // Convert hex to bytes
-    const addressBytes = new Uint8Array(hex.match(/.{1,2}/g)?.map(byte => Number.parseInt(byte, 16)) ?? []);
+    const bytes = new Uint8Array(normalized.match(/.{1,2}/g)?.map(byte => Number.parseInt(byte, 16)) ?? []);
 
-    // Pad to 32 bytes (left-padded, Aleo-compatible)
+    // Pad to 32 bytes (left-padded)
     const padded = new Uint8Array(32);
-    padded.set(addressBytes, 32 - addressBytes.length);
+    padded.set(bytes, 32 - bytes.length);
 
-    // Format as Leo u8 array string
     const leoBytes = Array.from(padded)
       .map(b => `${b}u8`)
       .join(', ');
@@ -90,7 +88,7 @@ export class AleoBaseSpokeProvider {
       const balanceStr = await this.networkClient.getProgramMappingValue(
         token, // e.g., "usdc_token.aleo"
         'account', // standard mapping name
-        walletAddress, // user's address
+        walletAddress,
       );
 
       return BigInt(balanceStr.replace(/[^\d]/g, ''));
@@ -101,6 +99,7 @@ export class AleoBaseSpokeProvider {
       throw error;
     }
   }
+
   async estimateFee(executeOptions: AleoExecuteOptions): Promise<AleoGasEstimate> {
     try {
       const baseFee = await this.programManager.estimateExecutionFee({
@@ -128,80 +127,30 @@ export class AleoBaseSpokeProvider {
       };
     }
   }
-  /*
-  async getLatestBlockHeight(): Promise<bigint> {
-    try {
-      const latestBlock = await this.networkClient.getLatestBlock();
-      return latestBlock.header.metadata.height;
-    } catch (error) {
-      throw new Error(`Failed to get latest block height: ${error}`);
-    }
-  }
-
-  async getTransactionDetails(txId: string): Promise<TransactionJSON> {
-    if (!AleoBaseSpokeProvider.isValidTransactionId(txId)) {
-      throw new Error(`Invalid Aleo transaction ID format: ${txId}`);
-    }
-
-    try {
-      return await this.networkClient.getTransaction(txId);
-    } catch (error) {
-      throw new Error(`Failed to get transaction ${txId}: ${error}`);
-    }
-  }
-
-  async verifyTransaction(txId: string): Promise<boolean> {
-    if (!AleoBaseSpokeProvider.isValidTransactionId(txId)) {
-      throw new Error(`Invalid Aleo transaction ID format: ${txId}`);
-    }
-
-    try {
-      const confirmed = await this.networkClient.getConfirmedTransaction(txId);
-      return confirmed.status === 'accepted';
-    } catch {
-      return false;
-    }
-  }
-
-
-    */
 
   /**
    * Transfer tokens cross-chain via asset_manager.aleo program.
    *
-   * Leo signature:
+   * Leo signature (assetManager_core.leo):
    * ```leo
    * async transition transfer(
    *   public token: field,
-   *   public destAddress: [u8; 32],
+   *   public dst_address: [u8; 32],
    *   public amount: u64,
-   *   public connSn: u128,
-   *   public data: field,
-   *   public feeAmount: u64,
-   *   public hubChainId: u128,
-   *   public hubAddress: [u8; 32]
-   * )
+   *   public conn_sn: u128,
+   *   public data: [u8; 32],
+   *   public fee_amount: u64,
+   *   public hub_chain_id: u128,
+   *   public hub_address: [u8; 32]
+   * ) -> Future
    * ```
-   *
-   * @param token - Token ID as field
-   * @param destAddress - Destination address on hub chain (hex, will be converted to [u8; 32])
-   * @param amount - Amount to transfer (u64)
-   * @param connSn - Connection sequence number (u128)
-   * @param data - Data payload as field
-   * @param feeAmount - Fee amount (u64)
-   * @param hubChainId - Hub chain ID (u128)
-   * @param hubAddress - Hub address (hex, will be converted to [u8; 32])
-   * @param spokeProvider - Aleo spoke provider instance
-   * @param raw - If true, return unsigned transaction; otherwise execute
-   *
-   * @returns Transaction ID if executed, or AleoRawTransaction if raw mode
    */
   async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
     token: bigint,
-    destAddress: Hex,
+    dstAddress: Hex,
     amount: bigint,
     connSn: bigint,
-    data: bigint,
+    data: Hex,
     feeAmount: bigint,
     hubChainId: bigint,
     hubAddress: Hex,
@@ -210,19 +159,18 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
-    // Input order and types must match deployed asset_manager.aleo transfer function
     const executeParams: AleoExecuteOptions = {
       programName: this.chainConfig.addresses.assetManager,
       functionName: 'transfer',
       inputs: [
         AleoBaseSpokeProvider.formatAmount(token, 'field'), // token: field
-        AleoBaseSpokeProvider.hexToAleoU8Array(destAddress), // destAddress: [u8; 32]
+        AleoBaseSpokeProvider.hexToAleoU8Array(dstAddress), // dst_address: [u8; 32]
         AleoBaseSpokeProvider.formatAmount(amount, 'u64'), // amount: u64
-        AleoBaseSpokeProvider.formatAmount(connSn, 'u128'), // connSn: u128
-        AleoBaseSpokeProvider.formatAmount(data, 'field'), // data: field
-        AleoBaseSpokeProvider.formatAmount(feeAmount, 'u64'), // feeAmount: u64
-        AleoBaseSpokeProvider.formatAmount(hubChainId, 'u128'), // hubChainId: u128
-        AleoBaseSpokeProvider.hexToAleoU8Array(hubAddress), // hubAddress: [u8; 32]
+        AleoBaseSpokeProvider.formatAmount(connSn, 'u128'), // conn_sn: u128
+        AleoBaseSpokeProvider.hexToAleoU8Array(data), // data: [u8; 32]
+        AleoBaseSpokeProvider.formatAmount(feeAmount, 'u64'), // fee_amount: u64
+        AleoBaseSpokeProvider.formatAmount(hubChainId, 'u128'), // hub_chain_id: u128
+        AleoBaseSpokeProvider.hexToAleoU8Array(hubAddress), // hub_address: [u8; 32]
       ],
     };
 
@@ -242,24 +190,15 @@ export class AleoBaseSpokeProvider {
   /**
    * Send cross-chain message via connection.aleo program.
    *
-   * Leo signature:
+   * Leo signature (connection_core.leo):
    * ```leo
    * async transition send_message(
    *   public dst_chain_id: u128,
    *   public dst_address: [u8; 32],
    *   public conn_sn: u128,
    *   public payload: [u8; 32]
-   * )
+   * ) -> Future
    * ```
-   *
-   * @param dstChainId - Destination chain ID (u128)
-   * @param dstAddress - Destination address on target chain (hex, will be converted to [u8; 32])
-   * @param connSn - Connection sequence number (u128)
-   * @param payload - Message payload (hex, will be converted to [u8; 32])
-   * @param spokeProvider - Aleo spoke provider instance
-   * @param raw - If true, return unsigned transaction; otherwise execute
-   *
-   * @returns Transaction ID if executed, or AleoRawTransaction if raw mode
    */
   async sendMessage<S extends AleoSpokeProviderType, R extends boolean = false>(
     dstChainId: bigint,
@@ -271,7 +210,6 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
-    // Input order and types must match deployed connection.aleo send_message function
     const executeParams: AleoExecuteOptions = {
       programName: this.chainConfig.addresses.connection,
       functionName: 'send_message',
@@ -296,7 +234,8 @@ export class AleoBaseSpokeProvider {
     return result.transactionId as TxReturnType<S, R>;
   }
 }
-// Only knows the wallet address -> it just returns unsigned transaction
+
+// Only knows the wallet address -> returns raw transaction (AleoExecuteOptions)
 export class AleoRawSpokeProvider extends AleoBaseSpokeProvider implements IRawSpokeProvider {
   public readonly walletProvider: WalletAddressProvider;
   public readonly raw = true;
@@ -314,6 +253,7 @@ export class AleoRawSpokeProvider extends AleoBaseSpokeProvider implements IRawS
   }
 }
 
+// Full wallet integration -> executes via walletProvider and returns tx ID
 export class AleoSpokeProvider extends AleoBaseSpokeProvider implements ISpokeProvider {
   public readonly walletProvider: IAleoWalletProvider;
 
