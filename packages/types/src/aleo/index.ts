@@ -63,6 +63,7 @@ export type AleoRawTransaction = {
   data: AleoExecuteOptions;
 };
 
+
 export interface IAleoWalletProvider extends WalletAddressProvider {
   getWalletAddress: () => Promise<string>;
   execute: (options: AleoExecuteOptions) => Promise<AleoExecutionResult>;

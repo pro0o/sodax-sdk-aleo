@@ -61,7 +61,8 @@
     "rlp": "3.0.0",
     "tiny-invariant": "1.3.3",
     "viem": "catalog:",
-    "bignumber.js": "catalog:"
+    "bignumber.js": "catalog:",
+    "@provablehq/sdk": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

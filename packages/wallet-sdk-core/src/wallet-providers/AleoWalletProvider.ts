@@ -38,9 +38,7 @@ export type BrowserExtensionAleoWalletConfig = {
   network?: AleoNetwork;
 };
 
-export type AleoWalletConfig =
-  | PrivateKeyAleoWalletConfig
-  | BrowserExtensionAleoWalletConfig;
+export type AleoWalletConfig = PrivateKeyAleoWalletConfig | BrowserExtensionAleoWalletConfig;
 
 export type PkAleoWallet = {
   type: 'privateKey';
@@ -112,7 +110,7 @@ export class AleoWalletProvider implements IAleoWalletProvider {
 
   async executeAndWait(
     options: AleoExecuteOptions,
-    receiptOptions?: AleoWaitForReceiptOptions
+    receiptOptions?: AleoWaitForReceiptOptions,
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
     const result = await this.execute(options);
     const receipt = await this.waitForTransactionReceipt(result.transactionId, receiptOptions);
@@ -195,12 +193,9 @@ export class AleoWalletProvider implements IAleoWalletProvider {
 
   async waitForTransactionReceipt(
     transactionId: string,
-    options: AleoWaitForReceiptOptions = {}
+    options: AleoWaitForReceiptOptions = {},
   ): Promise<AleoTransactionReceipt> {
-    const {
-      checkInterval = 2000,
-      timeout = 45000,
-    } = options;
+    const { checkInterval = 2000, timeout = 45000 } = options;
 
     try {
       const confirmedTx = await this.networkClient.waitForTransactionConfirmation(
@@ -222,20 +217,17 @@ export class AleoWalletProvider implements IAleoWalletProvider {
       if (error instanceof Error) {
         if (error.message.includes('timeout') || error.message.includes('did not appear')) {
           throw new Error(
-            `Transaction ${transactionId} did not confirm within ${timeout}ms. ` +
-            `The transaction may still be pending - check the transaction status manually.`
+            `Transaction ${transactionId} did not confirm within ${timeout}ms. The transaction may still be pending - check the transaction status manually.`,
           );
         }
         if (error.message.includes('Malformed') || error.message.includes('Invalid URL')) {
           throw new Error(
-            `Invalid transaction ID format: ${transactionId}. ` +
-            `Please verify the transaction ID is correct.`
+            `Invalid transaction ID format: ${transactionId}.Please verify the transaction ID is correct.`,
           );
         }
         if (error.message.includes('rejected')) {
           throw new Error(
-            `Transaction ${transactionId} was rejected by the network. ` +
-            `Check that the fee payer has sufficient credits and inputs are valid.`
+            `Transaction ${transactionId} was rejected by the network.Check that the fee payer has sufficient credits and inputs are valid.`,
           );
         }
       }
