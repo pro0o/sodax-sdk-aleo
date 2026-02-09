@@ -17,20 +17,22 @@ import { isAleoRawSpokeProvider } from '../../guards.js';
 export type AleoSpokeDepositParams = {
   from: string; // Aleo address (aleo1...)
   to?: HubAddress; // The address of the user on the hub chain (wallet abstraction address)
-  token: bigint; // Token ID as field
-  amount: bigint; // Amount to transfer
+  token: string; // Token ID (will be converted to field)
+  amount: number; // Amount to transfer (will be converted to u64)
   data: Hex; // Data payload
-  connSn?: bigint; // Connection sequence number (randomly generated if not provided)
-  feeAmount?: bigint; // Fee amount for cross-chain transfer (defaults to 0)
+  connSn?: string; // Connection sequence number (randomly generated if not provided)
+  feeAmount?: number; // Fee amount for cross-chain transfer (defaults to 0)
+  isNative?: boolean; // true → transfer_native (credits.aleo), false → transfer (token_registry)
 };
 
-export type AleoTransferToHubParams = {
+type AleoTransferToHubParams = {
   token: bigint;
   recipient: Address;
   amount: bigint;
   data: Hex;
   connSn: bigint;
   feeAmount: bigint;
+  isNative?: boolean;
 };
 
 export class AleoSpokeService {
@@ -72,16 +74,17 @@ export class AleoSpokeService {
         hubProvider,
       ));
 
-    const connSn = params.connSn ?? AleoSpokeService.generateConnSn();
+    const connSn = BigInt(params.connSn ?? AleoSpokeService.generateConnSn());
 
     return AleoSpokeService.transfer(
       {
-        token: params.token,
+        token: BigInt(params.token),
         recipient: userWallet,
-        amount: params.amount,
+        amount: BigInt(params.amount),
         data: keccak256(params.data),
         connSn,
-        feeAmount: params.feeAmount ?? 0n,
+        feeAmount: BigInt(params.feeAmount ?? 0),
+        isNative: params.isNative,
       },
       spokeProvider,
       hubProvider,
@@ -123,10 +126,10 @@ export class AleoSpokeService {
 
     return {
       spokeChainID: spokeProvider.chainConfig.chain.id,
-      token: encodeAddress(spokeProvider.chainConfig.chain.id, `0x${params.token.toString(16)}`),
+      token: encodeAddress(spokeProvider.chainConfig.chain.id, `0x${BigInt(params.token).toString(16)}`),
       from: encodeAddress(spokeProvider.chainConfig.chain.id, params.from),
       to,
-      amount: params.amount,
+      amount: BigInt(params.amount),
       data: params.data,
       srcAddress: encodeAddress(
         spokeProvider.chainConfig.chain.id,
@@ -152,7 +155,7 @@ export class AleoSpokeService {
     raw?: R,
   ): Promise<TxReturnType<S, R>> {
     const relayId = getIntentRelayChainId(hubProvider.chainConfig.chain.id);
-    const connSn = AleoSpokeService.generateConnSn();
+    const connSn = BigInt(AleoSpokeService.generateConnSn());
     return AleoSpokeService.call(BigInt(relayId), from, keccak256(payload), connSn, spokeProvider, raw);
   }
 
@@ -163,7 +166,7 @@ export class AleoSpokeService {
    * fee_amount, hub_chain_id, and hub_address must all be passed as inputs.
    */
   private static async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
-    { token, recipient, amount, data, connSn, feeAmount }: AleoTransferToHubParams,
+    { token, recipient, amount, data, connSn, feeAmount, isNative }: AleoTransferToHubParams,
     spokeProvider: S,
     hubProvider: EvmHubProvider,
     raw?: R,
@@ -173,17 +176,15 @@ export class AleoSpokeService {
     const hubChainId = BigInt(hubProvider.chainConfig.chain.id);
     const hubAddress = hubProvider.chainConfig.addresses.assetManager as Hex;
 
+    if (isNative) {
+      return baseProvider.transferNative(
+        token, recipient, amount, connSn, data, feeAmount,
+        hubChainId, hubAddress, spokeProvider, raw,
+      );
+    }
     return baseProvider.transfer(
-      token,
-      recipient,
-      amount,
-      connSn,
-      data,
-      feeAmount,
-      hubChainId,
-      hubAddress,
-      spokeProvider,
-      raw,
+      token, recipient, amount, connSn, data, feeAmount,
+      hubChainId, hubAddress, spokeProvider, raw,
     );
   }
 
@@ -206,10 +207,10 @@ export class AleoSpokeService {
    * Generate a random connection sequence number (conn_sn).
    * Aleo transitions can't read on-chain mappings, so conn_sn is generated as a random nonce.
    *
-   * @returns A random connection sequence number.
+   * @returns A random connection sequence number as string.
    */
-  public static generateConnSn(): bigint {
-    return BigInt(Math.floor(Math.random() * 98488343));
+  public static generateConnSn(): string {
+    return Math.floor(Math.random() * 98488343).toString();
   }
 
   /**

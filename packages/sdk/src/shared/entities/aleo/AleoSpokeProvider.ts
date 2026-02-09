@@ -11,7 +11,7 @@ import type {
 } from '@sodax/types';
 
 import { isAleoRawSpokeProvider } from '../../guards.js';
-import { AleoNetworkClient, ProgramManager } from '@provablehq/sdk';
+import { AleoNetworkClient, ProgramManager, type ExecuteOptions } from '@provablehq/sdk';
 
 const ALEO_DEFAULT_RPC_URL = 'https://api.explorer.provable.com/v2';
 const ALEO_DEFAULT_TIMEOUT = 45000;
@@ -101,51 +101,24 @@ export class AleoBaseSpokeProvider {
   }
 
   async estimateFee(executeOptions: AleoExecuteOptions): Promise<AleoGasEstimate> {
-    try {
-      const baseFee = await this.programManager.estimateExecutionFee({
-        programName: executeOptions.programName,
-        functionName: executeOptions.functionName,
-      });
+    // TODO: estimateExecutionFee removed in SDK v0.10.0-rc, use fallback
+    const baseFee = 1000000n;
+    const priorityFee = BigInt(executeOptions.priorityFee ?? 0);
 
-      const priorityFee = BigInt(executeOptions.priorityFee ?? 0);
-
-      return {
-        baseFee,
-        priorityFee,
-        totalFee: baseFee + priorityFee,
-        requiresFeeRecord: !executeOptions.feeRecord,
-      };
-    } catch {
-      const baseFee = 1000000n;
-      const priorityFee = BigInt(executeOptions.priorityFee ?? 0);
-
-      return {
-        baseFee,
-        priorityFee,
-        totalFee: baseFee + priorityFee,
-        requiresFeeRecord: !executeOptions.feeRecord,
-      };
-    }
+    return {
+      baseFee,
+      priorityFee,
+      totalFee: baseFee + priorityFee,
+      requiresFeeRecord: !executeOptions.feeRecord,
+    };
   }
 
   /**
-   * Transfer tokens cross-chain via asset_manager.aleo program.
-   *
-   * Leo signature (assetManager_core.leo):
-   * ```leo
-   * async transition transfer(
-   *   public token: field,
-   *   public dst_address: [u8; 32],
-   *   public amount: u64,
-   *   public conn_sn: u128,
-   *   public data: [u8; 32],
-   *   public fee_amount: u64,
-   *   public hub_chain_id: u128,
-   *   public hub_address: [u8; 32]
-   * ) -> Future
-   * ```
+   * Shared execution logic for transfer and transfer_native.
+   * Both have identical params — only the function name differs.
    */
-  async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
+  private async executeTransfer<S extends AleoSpokeProviderType, R extends boolean = false>(
+    functionName: 'transfer' | 'transferNative',
     token: bigint,
     dstAddress: Hex,
     amount: bigint,
@@ -159,9 +132,9 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
-    const executeParams: AleoExecuteOptions = {
+    const executeParams: ExecuteOptions = {
       programName: this.chainConfig.addresses.assetManager,
-      functionName: 'transfer',
+      functionName,
       inputs: [
         AleoBaseSpokeProvider.formatAmount(token, 'field'), // token: field
         AleoBaseSpokeProvider.hexToAleoU8Array(dstAddress), // dst_address: [u8; 32]
@@ -172,7 +145,11 @@ export class AleoBaseSpokeProvider {
         AleoBaseSpokeProvider.formatAmount(hubChainId, 'u128'), // hub_chain_id: u128
         AleoBaseSpokeProvider.hexToAleoU8Array(hubAddress), // hub_address: [u8; 32]
       ],
+      priorityFee: 0,
+      privateFee: false,
     };
+
+    console.log('ExecutePrams: ', executeParams);
 
     if (raw || isAleoRawSpokeProvider(spokeProvider)) {
       return {
@@ -185,6 +162,68 @@ export class AleoBaseSpokeProvider {
 
     const result = await (spokeProvider as AleoSpokeProvider).walletProvider.execute(executeParams);
     return result.transactionId as TxReturnType<S, R>;
+  }
+
+  /**
+   * Transfer token_registry tokens cross-chain via asset_manager.aleo/transfer.
+   * Uses: token_registry.aleo/transfer_public for the token transfer.
+   */
+  async transfer<S extends AleoSpokeProviderType, R extends boolean = false>(
+    token: bigint,
+    dstAddress: Hex,
+    amount: bigint,
+    connSn: bigint,
+    data: Hex,
+    feeAmount: bigint,
+    hubChainId: bigint,
+    hubAddress: Hex,
+    spokeProvider: S,
+    raw?: R,
+  ): Promise<TxReturnType<S, R>> {
+    return this.executeTransfer(
+      'transfer',
+      token,
+      dstAddress,
+      amount,
+      connSn,
+      data,
+      feeAmount,
+      hubChainId,
+      hubAddress,
+      spokeProvider,
+      raw,
+    );
+  }
+
+  /**
+   * Transfer native credits cross-chain via asset_manager.aleo/transfer_native.
+   * Uses: credits.aleo/transfer_public for the token transfer.
+   */
+  async transferNative<S extends AleoSpokeProviderType, R extends boolean = false>(
+    token: bigint,
+    dstAddress: Hex,
+    amount: bigint,
+    connSn: bigint,
+    data: Hex,
+    feeAmount: bigint,
+    hubChainId: bigint,
+    hubAddress: Hex,
+    spokeProvider: S,
+    raw?: R,
+  ): Promise<TxReturnType<S, R>> {
+    return this.executeTransfer(
+      'transferNative',
+      token,
+      dstAddress,
+      amount,
+      connSn,
+      data,
+      feeAmount,
+      hubChainId,
+      hubAddress,
+      spokeProvider,
+      raw,
+    );
   }
 
   /**

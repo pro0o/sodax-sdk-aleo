@@ -84,6 +84,7 @@ export class AleoWalletProvider implements IAleoWalletProvider {
       const account = new Account({ privateKey: config.privateKey });
 
       this.wallet = { type: 'privateKey', account };
+      console.log('===RPC_URL===', config.rpcUrl);
 
       const recordProvider = new NetworkRecordProvider(account, this.networkClient);
 
@@ -155,7 +156,7 @@ export class AleoWalletProvider implements IAleoWalletProvider {
           outputs: undefined,
         };
       } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Execution failed');
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     }
 

@@ -182,7 +182,7 @@ export const baseChainInfo = {
     name: 'Aleo Testnet',
     id: ALEO_TESTNET_CHAIN_ID,
     type: 'ALEO',
-    chainId: 'aleo-testnet',
+    chainId: '1122',
   },
 } as const satisfies Record<ChainId, BaseSpokeChainInfo<ChainType>>;
 
@@ -1431,7 +1431,7 @@ export const spokeChainConfig = {
     },
     nativeToken: 'credits.aleo' as const,
     bnUSD: 'bnusd_token_v1_testnet.aleo',
-    rpcUrl: 'https://api.provable.com/v2/testnet/',
+    rpcUrl: 'https://api.provable.com/v2',
     network: 'testnet' as const,
     gasPrice: '0',
     walletAddress: '',
