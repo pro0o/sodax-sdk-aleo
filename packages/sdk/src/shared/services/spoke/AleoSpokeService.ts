@@ -66,6 +66,7 @@ export class AleoSpokeService {
     hubProvider: EvmHubProvider,
     raw?: R,
   ): Promise<TxReturnType<S, R>> {
+    console.log('CHAIN_ID', spokeProvider.chainConfig.chain.id);
     const userWallet: Address =
       params.to ??
       (await EvmWalletAbstraction.getUserHubWalletAddress(
@@ -73,7 +74,6 @@ export class AleoSpokeService {
         encodeAddress(spokeProvider.chainConfig.chain.id, params.from),
         hubProvider,
       ));
-
     const connSn = BigInt(params.connSn ?? AleoSpokeService.generateConnSn());
 
     return AleoSpokeService.transfer(
@@ -173,18 +173,35 @@ export class AleoSpokeService {
   ): Promise<TxReturnType<S, R>> {
     const baseProvider = new AleoBaseSpokeProvider(spokeProvider.chainConfig);
 
-    const hubChainId = BigInt(hubProvider.chainConfig.chain.id);
+    // const hubChainId = BigInt(hubProvider.chainConfig.chain.id);
+    const hubChainId = BigInt(146);
     const hubAddress = hubProvider.chainConfig.addresses.assetManager as Hex;
 
     if (isNative) {
       return baseProvider.transferNative(
-        token, recipient, amount, connSn, data, feeAmount,
-        hubChainId, hubAddress, spokeProvider, raw,
+        token,
+        recipient,
+        amount,
+        connSn,
+        data,
+        feeAmount,
+        hubChainId,
+        hubAddress,
+        spokeProvider,
+        raw,
       );
     }
     return baseProvider.transfer(
-      token, recipient, amount, connSn, data, feeAmount,
-      hubChainId, hubAddress, spokeProvider, raw,
+      token,
+      recipient,
+      amount,
+      connSn,
+      data,
+      feeAmount,
+      hubChainId,
+      hubAddress,
+      spokeProvider,
+      raw,
     );
   }
 

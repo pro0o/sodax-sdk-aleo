@@ -7,7 +7,7 @@ export class AleoXService extends XService {
   private static instance: AleoXService;
 
   public networkClient: AleoNetworkClient;
-  public rpcUrl: string = 'https://api.explorer.provable.com/v1';
+  public rpcUrl = 'https://api.explorer.provable.com/v1';
 
   private constructor() {
     super('ALEO');
@@ -22,10 +22,9 @@ export class AleoXService extends XService {
   }
 
   public setNetworkClient(network: Network): void {
-    this.rpcUrl = network === Network.MAINNET 
-      ? 'https://api.explorer.aleo.org/v1'
-      : 'https://api.explorer.provable.com/v1';
-    
+    this.rpcUrl =
+      network === Network.MAINNET ? 'https://api.explorer.aleo.org/v1' : 'https://api.explorer.provable.com/v1';
+
     this.networkClient = new AleoNetworkClient(this.rpcUrl);
   }
 
@@ -34,11 +33,7 @@ export class AleoXService extends XService {
 
     try {
       if (xToken.symbol === 'ALEO' || xToken.address === 'credits.aleo') {
-        const mapping = await this.networkClient.getProgramMappingValue(
-          'credits.aleo',
-          'account',
-          address
-        );
+        const mapping = await this.networkClient.getProgramMappingValue('credits.aleo', 'account', address);
 
         if (mapping) {
           const valueStr = mapping.toString().replace('u64', '');
@@ -49,11 +44,7 @@ export class AleoXService extends XService {
       }
 
       const programId = xToken.address;
-      const mapping = await this.networkClient.getProgramMappingValue(
-        programId,
-        'account',
-        address
-      );
+      const mapping = await this.networkClient.getProgramMappingValue(programId, 'account', address);
 
       if (mapping) {
         const valueStr = mapping.toString().replace(/u\d+$/, '');

@@ -1,10 +1,11 @@
+
 import {
   Account,
   AleoNetworkClient,
   ProgramManager,
   AleoKeyProvider,
   NetworkRecordProvider,
-  type RecordPlaintext,
+  //   type RecordPlaintext,
 } from '@provablehq/sdk';
 
 import type {
@@ -24,11 +25,18 @@ import type { BaseAleoWalletAdapter } from '@provablehq/aleo-wallet-adaptor-core
 
 export type AleoNetwork = 'mainnet' | 'testnet';
 
+export type DelegateProvingConfig = {
+  apiKey: string;
+  consumerId: string;
+  url?: string;
+};
+
 export type PrivateKeyAleoWalletConfig = {
   type: 'privateKey';
   rpcUrl: string;
   privateKey: string;
   network?: AleoNetwork;
+  delegate?: DelegateProvingConfig;
 };
 
 export type BrowserExtensionAleoWalletConfig = {
@@ -74,17 +82,20 @@ export class AleoWalletProvider implements IAleoWalletProvider {
   public readonly wallet: AleoWallet;
   public readonly programManager: ProgramManager;
   private readonly keyProvider: AleoKeyProvider;
+  private readonly delegateConfig?: DelegateProvingConfig;
+  private readonly network: AleoNetwork;
 
   constructor(config: AleoWalletConfig) {
     this.keyProvider = new AleoKeyProvider();
     this.keyProvider.useCache(true);
+    this.network = config.network ?? 'mainnet';
 
     if (isPrivateKeyConfig(config)) {
+      this.delegateConfig = config.delegate;
       this.networkClient = new AleoNetworkClient(config.rpcUrl);
       const account = new Account({ privateKey: config.privateKey });
 
       this.wallet = { type: 'privateKey', account };
-      console.log('===RPC_URL===', config.rpcUrl);
 
       const recordProvider = new NetworkRecordProvider(account, this.networkClient);
 
@@ -134,26 +145,46 @@ export class AleoWalletProvider implements IAleoWalletProvider {
     throw new Error('Invalid wallet configuration');
   }
 
+  private getDefaultDelegateUrl(): string {
+    return this.network === 'testnet'
+      ? 'https://api.provable.com/prove/testnet/prove'
+      : 'https://api.provable.com/prove/mainnet/prove';
+  }
+
   async execute(options: AleoExecuteOptions): Promise<AleoExecutionResult> {
-    const { programName, functionName, inputs, priorityFee = 0, privateFee = false, feeRecord } = options;
+    const { programName, functionName, inputs, priorityFee = 0, privateFee = false } = options;
 
     if (isPkAleoWallet(this.wallet)) {
       try {
-        // Execute via ProgramManager (requires feeRecord cast to SDK type)
+        if (this.delegateConfig) {
+          const provingRequest = await this.programManager.provingRequest({
+            programName,
+            functionName,
+            inputs,
+            priorityFee,
+            privateFee,
+            broadcast: true,
+          });
+          const provingResponse = await this.programManager.networkClient.submitProvingRequest({
+            provingRequest,
+            url: this.delegateConfig.url ?? this.getDefaultDelegateUrl(),
+            apiKey: this.delegateConfig.apiKey,
+            consumerId: this.delegateConfig.consumerId,
+          });
+          return {
+            transactionId: provingResponse.transaction.id,
+          };
+        }
+
         const txId = await this.programManager.execute({
           programName,
           functionName,
           priorityFee,
           privateFee,
           inputs,
-          feeRecord: feeRecord as string | RecordPlaintext | undefined,
-          privateKey: this.wallet.account.privateKey(),
-          keySearchParams: { cacheKey: `${programName}:${functionName}` },
         });
-
         return {
           transactionId: txId,
-          outputs: undefined,
         };
       } catch (error) {
         throw new Error(error instanceof Error ? error.message : String(error));

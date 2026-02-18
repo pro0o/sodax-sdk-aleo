@@ -54,7 +54,7 @@
     "@provablehq/aleo-wallet-adaptor-shield": "catalog:",
     "@provablehq/aleo-wallet-adaptor-soter": "catalog:",
     "@provablehq/aleo-wallet-standard": "catalog:",
-    "@provablehq/sdk": "^0.9.15",
+    "@provablehq/sdk": "catalog:",
     "@sodax/types": "workspace:*",
     "@sodax/wallet-sdk-core": "workspace:*",
     "@solana/spl-token": "catalog:",

@@ -11,7 +11,7 @@ import type {
 } from '@sodax/types';
 
 import { isAleoRawSpokeProvider } from '../../guards.js';
-import { AleoNetworkClient, ProgramManager, type ExecuteOptions } from '@provablehq/sdk';
+import { AleoNetworkClient, ProgramManager } from '@provablehq/sdk';
 
 const ALEO_DEFAULT_RPC_URL = 'https://api.explorer.provable.com/v2';
 const ALEO_DEFAULT_TIMEOUT = 45000;
@@ -132,7 +132,7 @@ export class AleoBaseSpokeProvider {
   ): Promise<TxReturnType<S, R>> {
     const walletAddress = await spokeProvider.walletProvider.getWalletAddress();
 
-    const executeParams: ExecuteOptions = {
+    const executeParams: AleoExecuteOptions = {
       programName: this.chainConfig.addresses.assetManager,
       functionName,
       inputs: [
@@ -145,11 +145,8 @@ export class AleoBaseSpokeProvider {
         AleoBaseSpokeProvider.formatAmount(hubChainId, 'u128'), // hub_chain_id: u128
         AleoBaseSpokeProvider.hexToAleoU8Array(hubAddress), // hub_address: [u8; 32]
       ],
-      priorityFee: 0,
-      privateFee: false,
     };
-
-    console.log('ExecutePrams: ', executeParams);
+    console.log('ExecuteParams: ', executeParams);
 
     if (raw || isAleoRawSpokeProvider(spokeProvider)) {
       return {

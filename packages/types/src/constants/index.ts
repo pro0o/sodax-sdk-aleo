@@ -182,7 +182,7 @@ export const baseChainInfo = {
     name: 'Aleo Testnet',
     id: ALEO_TESTNET_CHAIN_ID,
     type: 'ALEO',
-    chainId: '1122',
+    chainId: 6694886634403,
   },
 } as const satisfies Record<ChainId, BaseSpokeChainInfo<ChainType>>;
 
@@ -203,8 +203,8 @@ export const ChainIdToIntentRelayChainId = {
   [HYPEREVM_MAINNET_CHAIN_ID]: 26745n,
   [LIGHTLINK_MAINNET_CHAIN_ID]: 27756n,
   [ETHEREUM_MAINNET_CHAIN_ID]: 2n,
-  [ALEO_MAINNET_CHAIN_ID]: 28n, // Placeholder - update with actual relay chain ID when available
-  [ALEO_TESTNET_CHAIN_ID]: 29n, // Placeholder - update with actual relay chain ID when available
+  [ALEO_MAINNET_CHAIN_ID]: 28n,
+  [ALEO_TESTNET_CHAIN_ID]: 6694886634401n, // idk about this
 } as const;
 
 export const getIntentRelayChainId = (chainId: ChainId): IntentRelayChainId => ChainIdToIntentRelayChainId[chainId];
@@ -381,11 +381,14 @@ export const SodaTokensAsHubAssets: Record<string, HubAsset> = Object.values(Sod
   {} as Record<string, HubAsset>,
 );
 
+// hubchain config
 export const hubChainConfig = {
   chain: baseChainInfo[SONIC_MAINNET_CHAIN_ID] satisfies BaseSpokeChainInfo<'EVM'>,
   addresses: {
-    assetManager: '0x60c5681bD1DB4e50735c4cA3386005A4BA4937C0',
-    hubWallet: '0xA0ed3047D358648F2C0583B415CffCA571FDB544',
+    // assetManager: '0x60c5681bD1DB4e50735c4cA3386005A4BA4937C0',
+    assetManager: '0x1B06762a8B9286f6A1B290579834e555a5F60557',
+    // hubWallet: '0xA0ed3047D358648F2C0583B415CffCA571FDB544',
+    hubWallet: '0x103328BFB6321AD198D5dc4075a171f01c0472E5',
     xTokenManager: '0x5bD2843de9D6b0e6A05d0FB742072274EA3C6CA3',
     icxMigration: '0x8294DE9fc60F5ABCc19245E5857071d7C42B9875',
     balnSwap: '0x610a90B61b89a98b954d5750E94834Aa45d08d10',
@@ -1429,8 +1432,8 @@ export const spokeChainConfig = {
       rateLimit: 'rate_limit_v1.aleo',
       testToken: '',
     },
-    nativeToken: 'credits.aleo' as const,
-    bnUSD: 'bnusd_token_v1_testnet.aleo',
+    nativeToken: '3443843282313283355522573239085696902919850365217539366784739393210722344986' as const,
+    bnUSD: '7190692537453907461105790569797103513515746302149567971663963167242253971980',
     rpcUrl: 'https://api.provable.com/v2',
     network: 'testnet' as const,
     gasPrice: '0',
@@ -2251,7 +2254,7 @@ export const hubAssets: Record<SpokeChainId, Record<string, HubAsset>> = {
   },
   [ALEO_MAINNET_CHAIN_ID]: {
     [spokeChainConfig[ALEO_MAINNET_CHAIN_ID].nativeToken]: {
-      asset: '0x0000000000000000000000000000000000000000', // Placeholder - update when Aleo hub token is deployed
+      asset: '0x0000000000000000000000000000000000000000', // Placeholder - update when Aleo hub Hubken is deployed
       decimal: 6,
       symbol: 'ALEO',
       name: 'Aleo',
@@ -2267,14 +2270,14 @@ export const hubAssets: Record<SpokeChainId, Record<string, HubAsset>> = {
   },
   [ALEO_TESTNET_CHAIN_ID]: {
     [spokeChainConfig[ALEO_TESTNET_CHAIN_ID].nativeToken]: {
-      asset: '0x0000000000000000000000000000000000000000', // Placeholder
+      asset: '0x0000000000000000000000000000000000000000',
       decimal: 6,
       symbol: 'ALEO',
       name: 'Aleo',
-      vault: '0x0000000000000000000000000000000000000000', // Placeholder
+      vault: '0x0000000000000000000000000000000000000000',
     },
     [spokeChainConfig[ALEO_TESTNET_CHAIN_ID].bnUSD]: {
-      asset: '0x0000000000000000000000000000000000000000', // Placeholder
+      asset: '0xDb38c51BcB3066cd8279f10723A0dE948f21285d',
       decimal: 6,
       symbol: 'bnUSD',
       name: 'bnUSD',

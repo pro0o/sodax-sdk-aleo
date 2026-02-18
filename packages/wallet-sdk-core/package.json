@@ -65,7 +65,7 @@
     "@mysten/wallet-standard": "catalog:",
     "@provablehq/aleo-types": "catalog:",
     "@provablehq/aleo-wallet-adaptor-core": "catalog:",
-    "@provablehq/sdk": "^0.9.15",
+    "@provablehq/sdk": "catalog:",
     "@sodax/types": "workspace:*",
     "@solana/spl-token": "catalog:",
     "@solana/wallet-adapter-base": "catalog:",
